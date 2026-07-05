@@ -1,0 +1,44 @@
+"use client";
+
+import type { CourseModuleTab } from "@/lib/types/course";
+import { cn } from "@/lib/utils";
+
+const tabs: { id: CourseModuleTab; label: string; color: string }[] = [
+  { id: "words", label: "单词", color: "bg-primary" },
+  { id: "sentences", label: "句子", color: "bg-secondary" },
+  { id: "dialogues", label: "对话", color: "bg-accent" },
+  { id: "scenario", label: "场景", color: "bg-purple" },
+];
+
+type ScenarioModuleTabsProps = {
+  active: CourseModuleTab;
+  onChange: (tab: CourseModuleTab) => void;
+  counts: Record<CourseModuleTab, number>;
+};
+
+export function ScenarioModuleTabs({
+  active,
+  onChange,
+  counts,
+}: ScenarioModuleTabsProps) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => onChange(tab.id)}
+          className={cn(
+            "rounded-2xl border-2 px-5 py-2.5 text-sm font-extrabold transition-all",
+            active === tab.id
+              ? `${tab.color} border-transparent text-white shadow-[0_4px_0_0_rgba(0,0,0,0.15)]`
+              : "border-border bg-white text-muted-foreground hover:border-primary/30 hover:text-foreground"
+          )}
+        >
+          {tab.label}
+          <span className="ml-1.5 opacity-80">({counts[tab.id]})</span>
+        </button>
+      ))}
+    </div>
+  );
+}

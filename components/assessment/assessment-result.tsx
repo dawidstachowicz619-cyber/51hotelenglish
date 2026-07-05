@@ -1,0 +1,204 @@
+"use client";
+
+import Link from "next/link";
+import {
+  ArrowLeft,
+  ArrowRight,
+  RotateCcw,
+  ShieldCheck,
+  Trophy,
+  XCircle,
+  Zap,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { PASS_THRESHOLD } from "@/lib/assessment/level-test-config";
+import { CEFR_LEVEL_INFO } from "@/lib/assessment/level-scoring";
+import { getLevelColor } from "@/lib/assessment/scoring";
+import type { LevelTestResult } from "@/lib/assessment/level-scoring";
+import { cn } from "@/lib/utils";
+
+const CATEGORY_LABELS = {
+  vocabulary: "词汇",
+  grammar: "语法",
+  reading: "阅读",
+  hotel: "酒店专业",
+  speaking: "对话口语",
+} as const;
+
+type AssessmentResultProps = {
+  result: LevelTestResult;
+  onRetry: () => void;
+  onBackToLevels: () => void;
+  identityVerified?: boolean;
+  pointsEarned?: number;
+};
+
+export function AssessmentResultView({
+  result,
+  onRetry,
+  onBackToLevels,
+  identityVerified,
+  pointsEarned = 0,
+}: AssessmentResultProps) {
+  const info = CEFR_LEVEL_INFO[result.level];
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <div className="text-center">
+        <div
+          className={cn(
+            "mx-auto flex size-24 items-center justify-center rounded-2xl text-white shadow-[0_4px_0_0_rgba(0,0,0,0.15)]",
+            result.passed ? getLevelColor(result.level) : "bg-red"
+          )}
+        >
+          {result.passed ? (
+            <Trophy className="size-12" strokeWidth={2} />
+          ) : (
+            <XCircle className="size-12" strokeWidth={2} />
+          )}
+        </div>
+
+        <p className="mt-8 text-sm font-extrabold uppercase tracking-wide text-muted-foreground">
+          {result.level} 级别测评结果
+        </p>
+        <h1 className="mt-2 font-display text-5xl text-foreground">
+          {result.score} 分
+        </h1>
+        <p
+          className={cn(
+            "mt-2 text-lg font-extrabold",
+            result.passed ? "text-primary" : "text-red"
+          )}
+        >
+          {result.passed
+            ? `通关成功！（≥ ${PASS_THRESHOLD} 分）`
+            : `未通关（需 ≥ ${PASS_THRESHOLD} 分）`}
+        </p>
+        <p className="mt-2 font-bold text-muted-foreground">{info.title}</p>
+        <p className="mt-2 text-sm font-semibold text-muted-foreground">
+          答对 {result.correct} / {result.total} 题
+        </p>
+        {identityVerified && (
+          <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary-light/60 px-4 py-1.5 text-xs font-extrabold text-primary">
+            <ShieldCheck className="size-3.5" />
+            身份已验证
+          </p>
+        )}
+      </div>
+
+      {pointsEarned > 0 && (
+        <div className="mt-6 rounded-2xl border-2 border-accent/30 bg-accent/10 p-5 text-center">
+          <Zap className="mx-auto size-8 text-accent" />
+          <p className="mt-2 font-display text-3xl text-accent">+{pointsEarned}</p>
+          <p className="text-sm font-bold text-muted-foreground">本次测评获得积分</p>
+          <Link
+            href="/leaderboard"
+            className="mt-3 inline-block text-sm font-extrabold text-primary hover:underline"
+          >
+            查看排名 →
+          </Link>
+        </div>
+      )}
+
+      <div className="mt-10 card-elevated p-6">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-extrabold text-foreground">得分进度</span>
+          <span className="font-display text-3xl text-primary">
+            {result.score}%
+          </span>
+        </div>
+        <div className="mt-3 h-4 overflow-hidden rounded-full bg-border">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all",
+              result.passed ? "bg-primary" : "bg-red"
+            )}
+            style={{ width: `${result.score}%` }}
+          />
+        </div>
+        <div
+          className="relative mt-1 h-0"
+          style={{ marginLeft: `${PASS_THRESHOLD}%` }}
+        >
+          <span className="absolute -translate-x-1/2 text-[10px] font-bold text-muted-foreground">
+            通关线 {PASS_THRESHOLD}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-6 card-elevated p-5">
+        <p className="text-sm font-extrabold text-foreground">各维度表现</p>
+        <div className="mt-4 space-y-3">
+          {(
+            Object.entries(result.byCategory) as [
+              keyof typeof result.byCategory,
+              { correct: number; total: number },
+            ][]
+          )
+            .filter(([, { total }]) => total > 0)
+            .map(([cat, { correct, total }]) => (
+              <div key={cat}>
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-foreground">{CATEGORY_LABELS[cat]}</span>
+                  <span className="text-muted-foreground">
+                    {correct}/{total} ·{" "}
+                    {total > 0 ? Math.round((correct / total) * 100) : 0}%
+                  </span>
+                </div>
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-border">
+                  <div
+                    className="h-full rounded-full bg-secondary"
+                    style={{
+                      width: total > 0 ? `${(correct / total) * 100}%` : "0%",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          "mt-6 rounded-2xl border-2 p-6",
+          result.passed
+            ? "border-primary/30 bg-primary-light/30"
+            : "border-red/20 bg-red/5"
+        )}
+      >
+        <p
+          className={cn(
+            "text-sm font-extrabold",
+            result.passed ? "text-primary" : "text-red"
+          )}
+        >
+          {result.passed ? "通关建议" : "复习建议"}
+        </p>
+        <p className="mt-2 text-sm font-semibold leading-relaxed text-foreground">
+          {result.recommendation}
+        </p>
+      </div>
+
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        {result.passed ? (
+          <Button size="lg" className="flex-1" asChild>
+            <Link href={result.coursePath}>
+              开始推荐课程
+              <ArrowRight className="size-5" />
+            </Link>
+          </Button>
+        ) : (
+          <Button size="lg" className="flex-1" onClick={onRetry}>
+            <RotateCcw className="size-4" />
+            重新挑战 {result.level}
+          </Button>
+        )}
+        <Button variant="outline" size="lg" onClick={onBackToLevels}>
+          <ArrowLeft className="size-4" />
+          返回级别列表
+        </Button>
+      </div>
+    </div>
+  );
+}

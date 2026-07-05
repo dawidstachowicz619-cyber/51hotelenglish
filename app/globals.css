@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #4b4b4b;
+  --card: #ffffff;
+  --card-foreground: #4b4b4b;
+  --muted: #f7f7f7;
+  --muted-foreground: #afafaf;
+  --border: #e5e5e5;
+  --primary: #58cc02;
+  --primary-dark: #58a700;
+  --primary-light: #d7ffb8;
+  --secondary: #1cb0f6;
+  --secondary-dark: #1899d6;
+  --accent: #ff9600;
+  --accent-dark: #e68600;
+  --purple: #ce82ff;
+  --red: #ff4b4b;
+
+  /* legacy aliases */
+  --gold: var(--primary);
+  --gold-light: #89e219;
+  --gold-muted: var(--primary-dark);
+  --charcoal: var(--foreground);
+  --cream: var(--foreground);
+  --surface: var(--muted);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-light: var(--primary-light);
+  --color-secondary: var(--secondary);
+  --color-secondary-dark: var(--secondary-dark);
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+  --color-purple: var(--purple);
+  --color-red: var(--red);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-muted: var(--gold-muted);
+  --color-charcoal: var(--charcoal);
+  --color-cream: var(--cream);
+  --color-surface: var(--surface);
+  --font-sans: var(--font-nunito);
+  --font-display: var(--font-nunito);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-nunito), system-ui, sans-serif;
+  }
+
+  ::selection {
+    background: rgba(88, 204, 2, 0.25);
+    color: var(--foreground);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .font-display {
+    font-family: var(--font-nunito), system-ui, sans-serif;
+    font-weight: 800;
+  }
+
+  .brand-gradient-text {
+    background: linear-gradient(135deg, #58cc02 0%, #1cb0f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .btn-primary-3d {
+    @apply rounded-2xl border-2 border-primary-dark bg-primary font-bold text-white uppercase tracking-wide shadow-none transition-all;
+    box-shadow: 0 4px 0 var(--primary-dark);
+  }
+
+  .btn-primary-3d:hover {
+    @apply bg-[#61e002];
+  }
+
+  .btn-primary-3d:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--primary-dark);
+  }
+
+  .card-elevated {
+    @apply rounded-2xl border-2 border-border bg-card;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .probation-report,
+  .probation-report * {
+    visibility: visible;
+  }
+
+  .probation-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
