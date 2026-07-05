@@ -35,6 +35,9 @@ export function AssessmentFlow() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [oralCorrect, setOralCorrect] = useState(false);
   const [answers, setAnswers] = useState<Map<string, boolean>>(new Map());
+  const [userAnswers, setUserAnswers] = useState<Map<string, string | boolean>>(
+    new Map()
+  );
   const [result, setResult] = useState<LevelTestResult | null>(null);
   const [pointsEarned, setPointsEarned] = useState(0);
 
@@ -51,6 +54,7 @@ export function AssessmentFlow() {
     setShowFeedback(false);
     setOralCorrect(false);
     setAnswers(new Map());
+    setUserAnswers(new Map());
     setResult(null);
     setPointsEarned(0);
   }, []);
@@ -111,6 +115,11 @@ export function AssessmentFlow() {
         next.set(question.id, getIsCorrect(question, answer));
         return next;
       });
+      setUserAnswers((prev) => {
+        const next = new Map(prev);
+        next.set(question.id, answer);
+        return next;
+      });
     },
     [showFeedback, question]
   );
@@ -123,6 +132,14 @@ export function AssessmentFlow() {
       setAnswers((prev) => {
         const next = new Map(prev);
         next.set(question.id, correct);
+        return next;
+      });
+      setUserAnswers((prev) => {
+        const next = new Map(prev);
+        next.set(
+          question.id,
+          correct ? question.modelAnswer : "（口语/选择未达标）"
+        );
         return next;
       });
     },
@@ -210,6 +227,9 @@ export function AssessmentFlow() {
     return (
       <AssessmentResultView
         result={result}
+        questions={questions}
+        userAnswers={userAnswers}
+        answerResults={answers}
         onRetry={handleRetry}
         onBackToLevels={handleBackToLevels}
         identityVerified={!!identityPhoto}
