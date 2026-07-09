@@ -12,7 +12,7 @@ type EmployeeTableProps = {
   employees: EmployeeLearningRecord[];
   selectedId: string | null;
   onSelect: (employee: EmployeeLearningRecord) => void;
-  onDelete: (employee: EmployeeLearningRecord) => void;
+  onDelete?: (employee: EmployeeLearningRecord) => void;
 };
 
 const STATUS_LABELS = {
@@ -105,7 +105,7 @@ export function EmployeeTable({
               <th className="px-4 py-3">进度</th>
               <th className="px-4 py-3">积分</th>
               <th className="px-4 py-3">最近活跃</th>
-              <th className="px-4 py-3 w-12" aria-label="操作" />
+              {onDelete && <th className="px-4 py-3 w-12" aria-label="操作" />}
             </tr>
           </thead>
           <tbody>
@@ -186,19 +186,21 @@ export function EmployeeTable({
                       {formatDate(emp.lastActiveAt)}
                     </p>
                   </td>
-                  <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(emp);
-                      }}
-                      className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red/10 hover:text-red"
-                      aria-label={`删除 ${emp.nickname}`}
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </td>
+                  {onDelete && (
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(emp);
+                        }}
+                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red/10 hover:text-red"
+                        aria-label={`删除 ${emp.nickname}`}
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}

@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  BarChart3,
   Building2,
   Check,
+  ChevronRight,
   LogOut,
   Plus,
   Shield,
@@ -30,10 +32,12 @@ import {
   getAllManagedHotels,
   registerHotel,
 } from "@/lib/hr/hotel-registry";
+import { hotelLearningPath } from "@/lib/hr/hotel-slug";
 import {
   clearPlatformAdminSession,
   loadPlatformAdminSession,
 } from "@/lib/hr/platform-admin-session";
+import { getHotelEmployees } from "@/lib/hr/roster-storage";
 import {
   HR_PERMISSION_KEYS,
   HR_PERMISSION_LABELS,
@@ -68,10 +72,12 @@ export function PlatformAdminDashboard() {
     window.addEventListener("hotel-hr-permissions-updated", refresh);
     window.addEventListener("hotel-registry-updated", refresh);
     window.addEventListener("hr-admin-accounts-updated", refresh);
+    window.addEventListener("hr-roster-updated", refresh);
     return () => {
       window.removeEventListener("hotel-hr-permissions-updated", refresh);
       window.removeEventListener("hotel-registry-updated", refresh);
       window.removeEventListener("hr-admin-accounts-updated", refresh);
+      window.removeEventListener("hr-roster-updated", refresh);
     };
   }, [authed, refresh]);
 
@@ -175,6 +181,41 @@ export function PlatformAdminDashboard() {
         />
       </div>
 
+      <div className="mt-6">
+        <h2 className="font-display text-lg text-foreground">酒店学员数据</h2>
+        <p className="mt-1 text-sm font-semibold text-muted-foreground">
+          点击进入各酒店，查看学员学习进度、测评成绩与试用期报告
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {hotels.map((hotel) => {
+            const config = getConfig(hotel);
+            const employeeCount = getHotelEmployees(hotel).length;
+            return (
+              <Link
+                key={hotel}
+                href={hotelLearningPath(hotel)}
+                className={cn(
+                  "group flex items-center gap-4 rounded-xl border-2 p-4 transition-colors",
+                  "border-border bg-white hover:border-accent hover:bg-accent/5"
+                )}
+              >
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
+                  <BarChart3 className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-base text-foreground">{hotel}</p>
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    {employeeCount} 名学员
+                    {config && !config.enabled && " · HR 后台已禁用"}
+                  </p>
+                </div>
+                <ChevronRight className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="card-elevated mt-6 p-6">
         <h2 className="font-display text-lg text-foreground">添加合作酒店</h2>
         <p className="mt-1 text-sm font-semibold text-muted-foreground">
@@ -219,22 +260,24 @@ export function PlatformAdminDashboard() {
                 config.enabled ? "border-border bg-white" : "border-red/30 bg-red/5"
               )}
             >
-              <button
-                type="button"
-                className="flex w-full items-center gap-4 p-4 text-left"
-                onClick={() => setExpanded(isOpen ? null : hotel)}
-              >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted">
-                  <Building2 className="size-5 text-muted-foreground" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-display text-base text-foreground">{hotel}</p>
-                  <p className="text-xs font-semibold text-muted-foreground">
-                    {config.enabled
-                      ? `已开通 · ${activePerms}/${HR_PERMISSION_KEYS.length} 项功能 · ${hotelAccountCount} 个管理员`
-                      : "HR 后台已禁用"}
-                  </p>
-                </div>
+              <div className="flex w-full items-center gap-4 p-4">
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                  onClick={() => setExpanded(isOpen ? null : hotel)}
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted">
+                    <Building2 className="size-5 text-muted-foreground" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-base text-foreground">{hotel}</p>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      {config.enabled
+                        ? `已开通 · ${activePerms}/${HR_PERMISSION_KEYS.length} 项功能 · ${hotelAccountCount} 个管理员`
+                        : "HR 后台已禁用"}
+                    </p>
+                  </div>
+                </button>
                 <span
                   className={cn(
                     "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold",
@@ -245,7 +288,13 @@ export function PlatformAdminDashboard() {
                 >
                   {config.enabled ? "启用" : "禁用"}
                 </span>
-              </button>
+                <Button size="sm" variant="secondary" asChild>
+                  <Link href={hotelLearningPath(hotel)}>
+                    <BarChart3 className="size-3.5" />
+                    学员数据
+                  </Link>
+                </Button>
+              </div>
 
               {isOpen && (
                 <div className="border-t-2 border-border px-4 pb-4 pt-3">
