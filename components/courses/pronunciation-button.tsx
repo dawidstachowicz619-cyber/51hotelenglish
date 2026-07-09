@@ -8,12 +8,14 @@ import { cn } from "@/lib/utils";
 
 type PronunciationButtonProps = {
   text: string;
+  lang?: import("@/lib/speech/voice-selection").SpeechLang;
   className?: string;
   size?: "sm" | "default";
 };
 
 export function PronunciationButton({
   text,
+  lang = "en-US",
   className,
   size = "sm",
 }: PronunciationButtonProps) {
@@ -32,7 +34,7 @@ export function PronunciationButton({
         speaking && "bg-secondary/15 text-secondary-dark",
         className
       )}
-      onClick={() => (speaking ? stop() : speak(text))}
+      onClick={() => (speaking ? stop() : speak(text, lang))}
       aria-label={speaking ? "停止播放" : "播放发音"}
       title={speaking ? "停止播放" : "播放发音"}
     >

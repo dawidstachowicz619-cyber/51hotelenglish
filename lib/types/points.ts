@@ -4,7 +4,9 @@ export type PointsAction =
   | "assessment_correct"
   | "daily_login"
   | "course_enter"
-  | "pronunciation_practice";
+  | "pronunciation_practice"
+  | "russian_daily_checkin"
+  | "russian_campaign_level";
 
 export type PointsEvent = {
   id: string;

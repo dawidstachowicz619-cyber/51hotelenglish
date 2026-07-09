@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, ClipboardCheck, ConciergeBell } from "lucide-react";
+import { ArrowRight, ClipboardCheck, ConciergeBell, Languages } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAssessmentAccess } from "@/hooks/use-assessment-access";
 import { TRIAL_CEFR_LEVEL } from "@/lib/assessment/course-access";
 import { CEFR_LABELS } from "@/lib/types/course";
 import { getFrontDeskStats } from "@/lib/data/front-desk";
+import { getRussianCourseStats } from "@/lib/data/hotel-russian-course";
 
 const frontDeskStats = getFrontDeskStats();
+const russianStats = getRussianCourseStats();
 
 export function CoursesPageContent() {
   const { ready, maxLevel, hasAssessment, accessibleLevels } =
@@ -89,6 +91,46 @@ export function CoursesPageContent() {
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
+          </div>
+        </article>
+
+        <article className="card-elevated border-[#0039A6]/15 bg-[#0039A6]/5 p-6 transition-all hover:-translate-y-0.5 hover:shadow-md md:p-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex gap-5">
+              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#0039A6] text-white shadow-[0_4px_0_0_rgba(0,57,166,0.35)]">
+                <Languages className="size-7" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-muted-foreground">
+                  Hotel Russian · CN → RU
+                </p>
+                <h2 className="mt-1 font-display text-2xl text-foreground">
+                  酒店俄语
+                </h2>
+                <p className="mt-2 text-sm font-semibold text-muted-foreground">
+                  通过中文学习俄语：单词、常用句、情景对话与场景选择题练习，中俄英三语对照。
+                </p>
+                <p className="mt-2 text-xs font-extrabold text-[#0039A6]">
+                  {russianStats.scenarios} 大场景 · {russianStats.words} 单词 ·{" "}
+                  {russianStats.sentences} 句子
+                </p>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+              <Button asChild className="bg-[#0039A6] hover:bg-[#002d85]">
+                <Link href="/courses/russian">
+                  场景课程
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="border-[#D52B1E]/40 text-[#B91C1C]">
+                <Link href="/courses/russian/room-items">客房物品 100</Link>
+              </Button>
+              <Button asChild variant="outline" className="border-[#0039A6]/40 text-[#0039A6]">
+                <Link href="/courses/russian/dining-items">餐饮物品 100</Link>
+              </Button>
+            </div>
           </div>
         </article>
       </div>

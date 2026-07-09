@@ -2,38 +2,75 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  detectSpeechLang,
+  isSectionOpenerSentence,
+  naturalSpeechRate,
+  pauseBetweenSentencesMs,
+  pickNaturalVoice,
+  splitForNaturalSpeech,
+  waitForSpeechVoices,
+  type SpeechLang,
+} from "@/lib/speech/voice-selection";
+import {
+  clampSpeechRate,
+  loadSpeechSpeed,
+  saveSpeechSpeed,
+  type SpeechSpeed,
+} from "@/lib/speech/speech-speed";
+
 export type SpeechItem = {
   text: string;
-  lang?: "en-US" | "zh-CN";
+  lang?: SpeechLang;
   rate?: number;
+  pitch?: number;
 };
-
-function pickVoice(lang: string) {
-  if (typeof window === "undefined") return null;
-  const voices = window.speechSynthesis.getVoices();
-  if (lang.startsWith("zh")) {
-    return (
-      voices.find((v) => v.lang.startsWith("zh") && v.name.includes("Tingting")) ??
-      voices.find((v) => v.lang.startsWith("zh-CN")) ??
-      voices.find((v) => v.lang.startsWith("zh"))
-    );
-  }
-  return (
-    voices.find((v) => v.lang.startsWith("en") && v.name.includes("Google")) ??
-    voices.find((v) => v.lang.startsWith("en-US")) ??
-    voices.find((v) => v.lang.startsWith("en"))
-  );
-}
 
 export function useSpeech() {
   const [speaking, setSpeaking] = useState(false);
   const [supported, setSupported] = useState(false);
+  const [voicesReady, setVoicesReady] = useState(false);
+  const [speed, setSpeed] = useState<SpeechSpeed>(() => loadSpeechSpeed());
   const queueRef = useRef<SpeechItem[]>([]);
   const runningRef = useRef(false);
+  const voicesLoadedRef = useRef(false);
+  const speedRef = useRef(speed);
+
+  useEffect(() => {
+    speedRef.current = speed;
+  }, [speed]);
+
+  const setSpeechSpeed = useCallback((next: SpeechSpeed) => {
+    setSpeed(next);
+    saveSpeechSpeed(next);
+  }, []);
 
   useEffect(() => {
     setSupported(typeof window !== "undefined" && "speechSynthesis" in window);
   }, []);
+
+  useEffect(() => {
+    if (!supported) return;
+
+    let cancelled = false;
+
+    void waitForSpeechVoices().then(() => {
+      if (cancelled) return;
+      voicesLoadedRef.current = true;
+      setVoicesReady(true);
+    });
+
+    const onVoicesChanged = () => {
+      voicesLoadedRef.current = window.speechSynthesis.getVoices().length > 0;
+      setVoicesReady(voicesLoadedRef.current);
+    };
+
+    window.speechSynthesis.addEventListener("voiceschanged", onVoicesChanged);
+    return () => {
+      cancelled = true;
+      window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged);
+    };
+  }, [supported]);
 
   const stop = useCallback(() => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -45,19 +82,25 @@ export function useSpeech() {
   }, []);
 
   const speakOne = useCallback(
-    (item: SpeechItem): Promise<void> =>
-      new Promise((resolve) => {
-        if (!supported || !item.text.trim()) {
-          resolve();
-          return;
-        }
+    async (item: SpeechItem): Promise<void> => {
+      if (!supported || !item.text.trim()) return;
 
+      if (!voicesLoadedRef.current) {
+        await waitForSpeechVoices();
+        voicesLoadedRef.current = true;
+        setVoicesReady(true);
+      }
+
+      return new Promise((resolve) => {
+        const lang = item.lang ?? "en-US";
+        const baseRate = item.rate ?? naturalSpeechRate(lang);
         const utterance = new SpeechSynthesisUtterance(item.text);
-        utterance.lang = item.lang ?? "en-US";
-        utterance.rate = item.rate ?? (item.lang?.startsWith("zh") ? 0.95 : 0.88);
-        utterance.pitch = 1;
+        utterance.lang = lang;
+        utterance.rate = clampSpeechRate(baseRate * speedRef.current);
+        utterance.pitch = item.pitch ?? (lang === "zh-CN" ? 1.0 : 0.98);
+        utterance.volume = 1;
 
-        const voice = pickVoice(utterance.lang);
+        const voice = pickNaturalVoice(lang);
         if (voice) utterance.voice = voice;
 
         utterance.onstart = () => setSpeaking(true);
@@ -65,7 +108,8 @@ export function useSpeech() {
         utterance.onerror = () => resolve();
 
         window.speechSynthesis.speak(utterance);
-      }),
+      });
+    },
     [supported]
   );
 
@@ -76,10 +120,16 @@ export function useSpeech() {
       runningRef.current = true;
       setSpeaking(true);
 
-      for (const item of items) {
+      for (let i = 0; i < items.length; i++) {
         if (!runningRef.current) break;
+        const item = items[i];
         await speakOne(item);
-        await new Promise((r) => setTimeout(r, 280));
+        if (!runningRef.current || i >= items.length - 1) break;
+        const lang = item.lang ?? "en-US";
+        const isOpener = isSectionOpenerSentence(item.text);
+        const basePause = pauseBetweenSentencesMs(lang);
+        const pauseMs = Math.round((isOpener ? basePause * 1.6 : basePause) / speedRef.current);
+        await new Promise((r) => setTimeout(r, pauseMs));
       }
 
       runningRef.current = false;
@@ -89,23 +139,36 @@ export function useSpeech() {
   );
 
   const speak = useCallback(
-    (text: string, lang: "en-US" | "zh-CN" = "en-US") => {
+    (text: string, lang: SpeechLang = "en-US") => {
       speakSequence([{ text, lang }]);
     },
     [speakSequence]
   );
 
+  /** 按句分段朗读，语速与停顿更接近真人讲解 */
+  const speakNatural = useCallback(
+    (text: string, lang?: SpeechLang) => {
+      const resolvedLang = lang ?? detectSpeechLang(text);
+      const sentences = splitForNaturalSpeech(text, resolvedLang);
+      const rate = naturalSpeechRate(resolvedLang);
+      speakSequence(sentences.map((sentence) => ({ text: sentence, lang: resolvedLang, rate })));
+    },
+    [speakSequence]
+  );
+
   useEffect(() => {
-    if (!supported) return;
+    return () => stop();
+  }, [stop]);
 
-    const loadVoices = () => window.speechSynthesis.getVoices();
-    loadVoices();
-    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
-    return () => {
-      window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
-      stop();
-    };
-  }, [supported, stop]);
-
-  return { speak, speakSequence, stop, speaking, supported };
+  return {
+    speak,
+    speakNatural,
+    speakSequence,
+    stop,
+    speaking,
+    supported,
+    voicesReady,
+    speed,
+    setSpeechSpeed,
+  };
 }

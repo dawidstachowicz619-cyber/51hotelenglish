@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 const navLinks = [
   { href: "/assessment", label: "水平测评" },
   { href: "/courses", label: "场景课程" },
+  { href: "/courses/russian", label: "酒店俄语" },
   { href: "/leaderboard", label: "排行榜" },
   { href: "/ai-coach", label: "AI 陪练" },
   { href: "/about", label: "关于我们" },

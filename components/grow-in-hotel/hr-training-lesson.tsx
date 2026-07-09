@@ -1,23 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Film,
   Play,
   Square,
   Volume2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SpeechSpeedControl } from "@/components/training/speech-speed-control";
+import { TrainingSlideVisual } from "@/components/training/training-slide-illustration";
+import { illustrationForSlideIndex } from "@/lib/types/training-slide-illustration";
+import { SLIDE_SECTION_LABELS } from "@/lib/hr/slide-structure";
 import {
   completeTrainingModule,
   getModuleScore,
   isModuleCompleted,
 } from "@/lib/hr/training-progress-storage";
+import { resolveTrainingVideoUrl } from "@/lib/hr/training-video-storage";
 import type { HrTrainingModule } from "@/lib/types/hr-training";
+import { detectSpeechLang } from "@/lib/speech/voice-selection";
 import { useSpeech } from "@/hooks/use-speech";
 import { cn } from "@/lib/utils";
 
@@ -25,11 +32,18 @@ type HrTrainingLessonProps = {
   module: HrTrainingModule;
   onBack: () => void;
   onComplete: () => void;
+  /** 管理员预览：不写入学习进度 */
+  preview?: boolean;
 };
 
 type Step = "video" | "quiz" | "done";
 
-export function HrTrainingLesson({ module, onBack, onComplete }: HrTrainingLessonProps) {
+export function HrTrainingLesson({
+  module,
+  onBack,
+  onComplete,
+  preview = false,
+}: HrTrainingLessonProps) {
   const [step, setStep] = useState<Step>("video");
   const [slideIndex, setSlideIndex] = useState(0);
   const [qIndex, setQIndex] = useState(0);
@@ -37,17 +51,60 @@ export function HrTrainingLesson({ module, onBack, onComplete }: HrTrainingLesso
   const [showFeedback, setShowFeedback] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
-  const { speak, stop, speaking, supported } = useSpeech();
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { speakNatural, stop, speaking, supported, voicesReady, speed, setSpeechSpeed } =
+    useSpeech();
 
   const slide = module.slides[slideIndex];
   const question = module.questions[qIndex];
   const alreadyDone = isModuleCompleted(module.id);
+  const isVideoCourse = module.deliveryType === "video";
 
   useEffect(() => {
-    if (step !== "video" || !slide || !autoPlay) return;
-    speak(slide.narration, /[\u4e00-\u9fff]/.test(slide.narration) ? "zh-CN" : "en-US");
+    if (!isVideoCourse || !module.videoUrl) {
+      setVideoSrc(null);
+      return;
+    }
+
+    let active = true;
+    let objectUrl: string | null = null;
+
+    void resolveTrainingVideoUrl(module.videoUrl).then((url) => {
+      if (!active) return;
+      objectUrl = url;
+      setVideoSrc(url);
+    });
+
+    return () => {
+      active = false;
+      if (objectUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [isVideoCourse, module.videoUrl]);
+
+  useEffect(() => {
+    if (step !== "video" || !slide || !autoPlay || !voicesReady || isVideoCourse) return;
+    speakNatural(slide.narration, detectSpeechLang(slide.narration));
     return () => stop();
-  }, [step, slideIndex, slide, autoPlay, speak, stop, step]);
+  }, [
+    step,
+    slideIndex,
+    slide,
+    autoPlay,
+    speakNatural,
+    stop,
+    voicesReady,
+    isVideoCourse,
+    speed,
+  ]);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = speed;
+    }
+  }, [speed, videoSrc]);
 
   const goNextSlide = () => {
     stop();
@@ -78,11 +135,13 @@ export function HrTrainingLesson({ module, onBack, onComplete }: HrTrainingLesso
       setShowFeedback(false);
     } else {
       const score = Math.round((correctCount / module.questions.length) * 100);
-      completeTrainingModule(module.id, score, {
-        title: module.title,
-        phase: module.phase,
-        ask: module.ask,
-      });
+      if (!preview) {
+        completeTrainingModule(module.id, score, {
+          title: module.title,
+          phase: module.phase,
+          ask: module.ask,
+        });
+      }
       setStep("done");
     }
   };
@@ -96,12 +155,15 @@ export function HrTrainingLesson({ module, onBack, onComplete }: HrTrainingLesso
     return (
       <div className="card-elevated p-8 text-center">
         <CheckCircle2 className="mx-auto size-16 text-primary" />
-        <h2 className="mt-4 font-display text-2xl text-foreground">课程完成！</h2>
+        <h2 className="mt-4 font-display text-2xl text-foreground">
+          {preview ? "预览完成" : "课程完成！"}
+        </h2>
         <p className="mt-2 text-sm font-semibold text-muted-foreground">
           {module.title} · 测验得分 {scorePercent}%
+          {preview && " · 预览模式未保存进度"}
         </p>
         <Button className="mt-6" onClick={onComplete}>
-          返回 Grow in Hotel
+          {preview ? "关闭预览" : "返回 Grow in Hotel"}
         </Button>
       </div>
     );
@@ -192,24 +254,32 @@ export function HrTrainingLesson({ module, onBack, onComplete }: HrTrainingLesso
   return (
     <div className="card-elevated overflow-hidden">
       <div className="relative aspect-video bg-gradient-to-br from-secondary/20 via-secondary/10 to-primary-light/30">
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-secondary">
-            视频课 · 第 {slideIndex + 1} / {module.slides.length} 节
-          </p>
-          <h2 className="mt-3 font-display text-xl text-foreground md:text-2xl">
-            {slide.title}
-          </h2>
-          {slide.bullets.length > 0 && (
-            <ul className="mt-4 max-w-md space-y-1 text-left text-sm font-semibold text-foreground">
-              {slide.bullets.map((b) => (
-                <li key={b} className="flex gap-2">
-                  <span className="text-primary">•</span>
-                  {b}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {isVideoCourse && videoSrc ? (
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            controls
+            playsInline
+            className="absolute inset-0 size-full bg-black object-contain"
+          />
+        ) : (
+          <TrainingSlideVisual
+            illustration={slide.illustration ?? illustrationForSlideIndex(slideIndex)}
+            slideLabel={
+              slide.section
+                ? `${SLIDE_SECTION_LABELS[slide.section]} · 第 ${slideIndex + 1} / ${module.slides.length} 节`
+                : `讲解课 · 第 ${slideIndex + 1} / ${module.slides.length} 节`
+            }
+            title={slide.title}
+            bullets={slide.bullets}
+            section={slide.section}
+          />
+        )}
+        {isVideoCourse && !videoSrc && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <p className="text-sm font-bold text-white">视频加载中…</p>
+          </div>
+        )}
         <div className="absolute bottom-0 inset-x-0 h-1 bg-black/10">
           <div
             className="h-full bg-secondary transition-all"
@@ -226,69 +296,83 @@ export function HrTrainingLesson({ module, onBack, onComplete }: HrTrainingLesso
             className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-primary"
           >
             <ArrowLeft className="size-3.5" />
-            返回列表
+            {preview ? "关闭预览" : "返回列表"}
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setAutoPlay((v) => !v)}
-              className="text-[10px] font-extrabold text-muted-foreground"
-            >
-              {autoPlay ? "自动讲解开" : "自动讲解关"}
-            </button>
-            {supported && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  speaking
-                    ? stop()
-                    : speak(
-                        slide.narration,
-                        /[\u4e00-\u9fff]/.test(slide.narration) ? "zh-CN" : "en-US"
-                      )
-                }
-              >
-                {speaking ? (
-                  <Square className="size-4" />
-                ) : (
-                  <Volume2 className="size-4" />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {isVideoCourse ? (
+              <>
+                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-accent">
+                  <Film className="size-3" />
+                  视频培训
+                </span>
+                <SpeechSpeedControl value={speed} onChange={setSpeechSpeed} compact />
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setAutoPlay((v) => !v)}
+                  className="text-[10px] font-extrabold text-muted-foreground"
+                >
+                  {autoPlay ? "自动讲解开" : "自动讲解关"}
+                </button>
+                <SpeechSpeedControl value={speed} onChange={setSpeechSpeed} compact />
+                {supported && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      speaking
+                        ? stop()
+                        : speakNatural(slide.narration, detectSpeechLang(slide.narration))
+                    }
+                  >
+                    {speaking ? (
+                      <Square className="size-4" />
+                    ) : (
+                      <Volume2 className="size-4" />
+                    )}
+                    {speaking ? "停止" : "播放讲解"}
+                  </Button>
                 )}
-                {speaking ? "停止" : "播放讲解"}
-              </Button>
+              </>
             )}
           </div>
         </div>
 
         <p className="mt-4 text-sm font-semibold leading-relaxed text-muted-foreground">
-          {slide.narration}
+          {isVideoCourse
+            ? "请完整观看上方视频，然后点击下方进入课后测验。"
+            : slide.narration}
         </p>
 
         <div className="mt-6 flex gap-2">
-          <Button
-            variant="outline"
-            disabled={slideIndex === 0}
-            onClick={goPrevSlide}
-          >
-            <ChevronLeft className="size-4" />
-            上一节
-          </Button>
+          {!isVideoCourse && (
+            <Button
+              variant="outline"
+              disabled={slideIndex === 0}
+              onClick={goPrevSlide}
+            >
+              <ChevronLeft className="size-4" />
+              上一节
+            </Button>
+          )}
           <Button className="flex-1" onClick={goNextSlide}>
-            {slideIndex < module.slides.length - 1 ? (
-              <>
-                下一节
-                <ChevronRight className="size-4" />
-              </>
-            ) : (
+            {isVideoCourse || slideIndex >= module.slides.length - 1 ? (
               <>
                 <Play className="size-4" />
                 开始测验
+              </>
+            ) : (
+              <>
+                下一节
+                <ChevronRight className="size-4" />
               </>
             )}
           </Button>
         </div>
 
-        {alreadyDone && (
+        {alreadyDone && !preview && (
           <p className="mt-3 text-center text-xs font-bold text-primary">
             已完成 · 上次得分 {getModuleScore(module.id) ?? "—"}%
           </p>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, BookOpen, LogOut, RotateCcw, Save } from "lucide-react";
 
 import { CourseGeneratorPanel } from "@/components/admin/platform/course-generator-panel";
+import { ManagementCourseAdmin } from "@/components/admin/platform/management-course-admin";
 import { PlatformLoginGate } from "@/components/admin/platform/platform-login-gate";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,9 +50,11 @@ import {
 import { cn } from "@/lib/utils";
 
 type EditorTab = "meta" | "words" | "sentences" | "dialogues" | "simulations";
+type AdminMode = "scenarios" | "management";
 
 export function CourseContentAdmin() {
   const [authed, setAuthed] = useState(false);
+  const [adminMode, setAdminMode] = useState<AdminMode>("scenarios");
   const [departmentId, setDepartmentId] =
     useState<FrontDeskDepartmentId>("concierge");
   const [scenarioId, setScenarioId] = useState("special-requests");
@@ -301,6 +304,39 @@ export function CourseContentAdmin() {
         </div>
       </div>
 
+      <div className="mt-6 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setAdminMode("scenarios")}
+          className={cn(
+            "rounded-full px-4 py-2 text-xs font-extrabold transition-colors",
+            adminMode === "scenarios"
+              ? "bg-primary text-white"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          )}
+        >
+          岗位场景课程
+        </button>
+        <button
+          type="button"
+          onClick={() => setAdminMode("management")}
+          className={cn(
+            "rounded-full px-4 py-2 text-xs font-extrabold transition-colors",
+            adminMode === "management"
+              ? "bg-accent text-white"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          )}
+        >
+          Management Training
+        </button>
+      </div>
+
+      {adminMode === "management" ? (
+        <div className="mt-6">
+          <ManagementCourseAdmin />
+        </div>
+      ) : (
+        <>
       <div className="mt-6">
         <CourseGeneratorPanel
           defaultDepartment={departmentId}
@@ -529,6 +565,8 @@ export function CourseContentAdmin() {
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

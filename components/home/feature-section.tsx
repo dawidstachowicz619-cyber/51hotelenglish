@@ -2,6 +2,7 @@ import {
   BedDouble,
   Bot,
   ConciergeBell,
+  Languages,
   UtensilsCrossed,
 } from "lucide-react";
 import Link from "next/link";
@@ -46,6 +47,18 @@ const features = [
     lightBg: "bg-accent/10",
   },
   {
+    id: "hotel-russian",
+    icon: Languages,
+    title: "酒店俄语",
+    subtitle: "CN · RU · EN",
+    description:
+      "通过中文学俄语：单词、常用句、情景对话与场景练习，中俄英三语对照，接待 Russian guests 更自信。",
+    href: "/courses/russian",
+    color: "bg-[#0039A6]",
+    borderColor: "border-[#0039A6]/30",
+    lightBg: "bg-[#0039A6]/5",
+  },
+  {
     id: "ai-simulation",
     icon: Bot,
     title: "AI 模拟真实客诉",
@@ -69,7 +82,7 @@ export function FeatureSection() {
             学习路径
           </p>
           <h2 className="mt-3 font-display text-3xl text-foreground sm:text-4xl">
-            四大核心模块
+            五大核心模块
           </h2>
           <p className="mt-4 text-base font-semibold text-muted-foreground">
             通关地图式学习，从上往下逐级闯关，A1 到 C1 五段旅程等你征服。
@@ -107,12 +120,18 @@ export function FeatureSection() {
 
                 <div className="mt-6">
                   <Button
-                    variant={feature.id === "front-desk" ? "default" : "outline"}
+                    variant={
+                      feature.id === "front-desk" || feature.id === "hotel-russian"
+                        ? "default"
+                        : "outline"
+                    }
                     size="sm"
                     asChild
                   >
                     <Link href={feature.href}>
-                      {feature.id === "front-desk" ? "进入学习" : "了解更多"}
+                      {feature.id === "front-desk" || feature.id === "hotel-russian"
+                        ? "进入学习"
+                        : "了解更多"}
                     </Link>
                   </Button>
                 </div>

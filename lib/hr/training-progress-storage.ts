@@ -1,5 +1,6 @@
 import type { EmployeeTrainingProgress } from "@/lib/types/hr-training";
 import { EMPLOYEE_TRAINING_PROGRESS_KEY } from "@/lib/types/hr-training";
+import type { AskDimension, LearningPhase } from "@/lib/types/learning-record";
 import { loadProfile } from "@/lib/points/storage";
 import { appendLearningHistory } from "@/lib/hr/learning-history-storage";
 
@@ -51,8 +52,8 @@ export function completeTrainingModule(
   appendLearningHistory({
     employeeId: profile.userId,
     at: new Date().toISOString(),
-    phase: meta.phase as "onboarding" | "role" | "general",
-    ask: meta.ask as "attitude" | "skill" | "knowledge",
+    phase: meta.phase as LearningPhase,
+    ask: meta.ask as AskDimension,
     title: meta.title,
     subtitle: `HR 培训课程 · 测验 ${score}%`,
     score,

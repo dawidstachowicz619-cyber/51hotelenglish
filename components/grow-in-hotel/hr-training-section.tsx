@@ -31,7 +31,11 @@ export function HrTrainingSection({ hotel, department }: HrTrainingSectionProps)
   const [, tick] = useState(0);
 
   const refresh = useCallback(() => {
-    setModules(getVisibleTrainingModules(hotel, department));
+    setModules(
+      getVisibleTrainingModules(hotel, department).filter(
+        (m) => m.phase !== "management"
+      )
+    );
     tick((n) => n + 1);
   }, [hotel, department]);
 
@@ -64,7 +68,7 @@ export function HrTrainingSection({ hotel, department }: HrTrainingSectionProps)
         <BookOpen className="mx-auto size-10 text-muted-foreground" />
         <p className="mt-3 font-display text-lg text-foreground">HR 培训课程</p>
         <p className="mt-1 text-sm font-semibold text-muted-foreground">
-          人力资源部上传的培训文档将在此显示为视频课与测验
+          人力资源部上传 PPT / 文档后，将在此显示为讲解课与测验
         </p>
       </section>
     );
@@ -75,7 +79,7 @@ export function HrTrainingSection({ hotel, department }: HrTrainingSectionProps)
       <div className="mb-4">
         <h2 className="font-display text-xl text-foreground">HR 培训课程</h2>
         <p className="mt-1 text-sm font-semibold text-muted-foreground">
-          人力资源部上传文档 · 自动生成视频讲解与测验
+          人力资源部上传 PPT / 文档 · 自动生成讲解课与测验
         </p>
       </div>
 

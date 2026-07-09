@@ -6,12 +6,16 @@
     "dev": "next dev -p 3010",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:room-images": "bash scripts/sync-room-item-images.sh",
+    "sync:dining-images": "bash scripts/sync-dining-item-images.sh",
+    "generate:russian-campaign": "node scripts/generate-russian-campaign-data.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.3.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.23.0",
     "mammoth": "^1.12.0",
     "next": "16.2.10",

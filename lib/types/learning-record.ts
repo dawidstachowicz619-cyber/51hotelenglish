@@ -15,19 +15,21 @@ export const ASK_SHORT: Record<AskDimension, string> = {
   knowledge: "知识",
 };
 
-/** 学习阶段：入职培训 → 岗位学习 → 通用技能 */
-export type LearningPhase = "onboarding" | "role" | "general";
+/** 学习阶段：入职培训 → 岗位学习 → 通用技能 → 管理培训 */
+export type LearningPhase = "onboarding" | "role" | "general" | "management";
 
 export const LEARNING_PHASE_LABELS: Record<LearningPhase, string> = {
   onboarding: "新员工入职培训",
   role: "在岗岗位学习",
   general: "通用岗位知识技能",
+  management: "Management Training · 管理培训",
 };
 
 export const LEARNING_PHASE_ORDER: LearningPhase[] = [
   "onboarding",
   "role",
   "general",
+  "management",
 ];
 
 export type LearningItemStatus = "completed" | "in_progress" | "not_started";

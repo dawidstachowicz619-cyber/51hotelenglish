@@ -2,8 +2,14 @@ import { getCourseTrackForDepartment, getDepartmentLabel } from "@/lib/hr/hotel-
 import { buildProgressionMap } from "@/lib/course/progression-map";
 import { loadFrontDeskProgress } from "@/lib/course/progress-storage";
 import { moduleToAsk } from "@/lib/hr/ask-mapping";
+import { getVisibleManagementModules } from "@/lib/hr/management-training-storage";
 import { STATIC_CURRICULUM } from "@/lib/hr/onboarding-curriculum";
 import { getLearningHistory } from "@/lib/hr/learning-history-storage";
+import {
+  getModuleScore,
+  isModuleCompleted,
+  loadTrainingProgress,
+} from "@/lib/hr/training-progress-storage";
 import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
 import type {
   AskDimension,
@@ -151,6 +157,32 @@ function staticItemStatus(
   }
 }
 
+function buildManagementItems(employee: EmployeeLearningRecord): LearningRecordItem[] {
+  const dept = employee.department === "other" ? "reception" : employee.department;
+  const modules = getVisibleManagementModules(employee.hotel, dept);
+
+  return modules.map((mod) => {
+    const done = isModuleCompleted(mod.id);
+    const score = getModuleScore(mod.id);
+    return {
+      id: mod.id,
+      phase: "management" as const,
+      ask: mod.ask,
+      title: mod.title,
+      subtitle: "Management Training · 管理培训",
+      completedAt: done ? (loadTrainingCompletedAt(mod.id) ?? employee.lastActiveAt) : null,
+      status: (done ? "completed" : "not_started") as LearningItemStatus,
+      score: score ?? undefined,
+      durationMinutes: Math.max(1, Math.ceil(mod.slideCount * 8)),
+    };
+  });
+}
+
+function loadTrainingCompletedAt(moduleId: string): string | null {
+  if (typeof window === "undefined") return null;
+  return loadTrainingProgress().completedAt[moduleId] ?? null;
+}
+
 function buildStaticItems(employee: EmployeeLearningRecord): LearningRecordItem[] {
   return STATIC_CURRICULUM.map((item) => {
     const { status, completedAt, score } = staticItemStatus(item.id, employee);
@@ -235,7 +267,8 @@ export function buildProbationLearningReport(
 
   const staticItems = buildStaticItems(employee);
   const roleItems = buildRoleItems(employee, completedIds);
-  const allItems = [...staticItems, ...roleItems];
+  const managementItems = buildManagementItems(employee);
+  const allItems = [...staticItems, ...roleItems, ...managementItems];
 
   const phases = LEARNING_PHASE_ORDER.map((phase) => summarizePhase(phase, allItems));
   const askSummary = summarizeAsk(allItems);

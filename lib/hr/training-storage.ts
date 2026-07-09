@@ -42,6 +42,31 @@ export function removeHotelTrainingModule(hotel: string, moduleId: string): void
   saveStore(store);
 }
 
+export function updateHotelTrainingModule(
+  hotel: string,
+  moduleId: string,
+  patch: Partial<Pick<HrTrainingModule, "department" | "phase" | "ask" | "title">>
+): HrTrainingModule | null {
+  const key = hotel.trim();
+  const store = loadStore();
+  const list = store[key] ?? [];
+  let updated: HrTrainingModule | null = null;
+  store[key] = list.map((m) => {
+    if (m.id !== moduleId) return m;
+    updated = { ...m, ...patch, id: moduleId };
+    return updated;
+  });
+  if (updated) saveStore(store);
+  return updated;
+}
+
+export function getHotelTrainingModuleById(
+  hotel: string,
+  moduleId: string
+): HrTrainingModule | undefined {
+  return getHotelTrainingModules(hotel).find((m) => m.id === moduleId);
+}
+
 export function getTrainingModulesForEmployee(
   hotel: string,
   department: EmployeeDepartment

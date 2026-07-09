@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
+  Briefcase,
   ClipboardCheck,
   Printer,
   Sprout,
@@ -13,7 +14,10 @@ import {
 
 import { AssignedCatalogCourses } from "@/components/grow-in-hotel/assigned-catalog-courses";
 import { HrTrainingSection } from "@/components/grow-in-hotel/hr-training-section";
+import { ManagementTrainingSection } from "@/components/grow-in-hotel/management-training-section";
+import { HrTrainingUpload } from "@/components/admin/hr/hr-training-upload";
 import { ProbationReportDialog } from "@/components/admin/hr/probation-report-dialog";
+import { UserProfileForm } from "@/components/points/user-profile-form";
 import { Button } from "@/components/ui/button";
 import {
   buildCurrentEmployeeRecord,
@@ -21,6 +25,8 @@ import {
   saveEmployeeMeta,
   type EmployeeMeta,
 } from "@/lib/hr/current-employee-record";
+import { canUploadHrTraining } from "@/lib/hr/hr-training-upload-access";
+import { loadHrSession } from "@/lib/hr/hr-session";
 import {
   getDepartmentLabel,
   getHotelDepartments,
@@ -57,7 +63,19 @@ const PHASE_ACTIONS = {
     label: "通用技能学习",
     icon: Target,
   },
+  management: {
+    href: "/grow-in-hotel#management-training",
+    label: "进入管理培训",
+    icon: Briefcase,
+  },
 } as const;
+
+const PHASE_NUMBER: Record<string, string> = {
+  onboarding: "Phase 1",
+  role: "Phase 2",
+  general: "Phase 3",
+  management: "Phase 4",
+};
 
 export function GrowInHotelPageContent() {
   const [employee, setEmployee] = useState<EmployeeLearningRecord | null>(null);
@@ -69,10 +87,17 @@ export function GrowInHotelPageContent() {
     hireDate: new Date().toISOString().slice(0, 10),
   });
   const [showSetup, setShowSetup] = useState(false);
+  const [canUploadTraining, setCanUploadTraining] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   const refresh = useCallback(() => {
     const record = buildCurrentEmployeeRecord();
     setEmployee(record);
+    if (record) {
+      setCanUploadTraining(canUploadHrTraining(record, loadHrSession()));
+    } else {
+      setCanUploadTraining(false);
+    }
     if (record?.hotel) {
       setDepartments(getHotelDepartments(record.hotel));
     }
@@ -92,15 +117,18 @@ export function GrowInHotelPageContent() {
 
   useEffect(() => {
     refresh();
+    setInitialized(true);
     window.addEventListener("course-progress-updated", refresh);
     window.addEventListener("assessment-updated", refresh);
     window.addEventListener("employee-meta-updated", refresh);
     window.addEventListener("hotel-departments-updated", refresh);
+    window.addEventListener("points-updated", refresh);
     return () => {
       window.removeEventListener("course-progress-updated", refresh);
       window.removeEventListener("assessment-updated", refresh);
       window.removeEventListener("employee-meta-updated", refresh);
       window.removeEventListener("hotel-departments-updated", refresh);
+      window.removeEventListener("points-updated", refresh);
     };
   }, [refresh]);
 
@@ -116,10 +144,38 @@ export function GrowInHotelPageContent() {
     refresh();
   };
 
-  if (!employee) {
+  if (!initialized) {
     return (
       <div className="mx-auto max-w-3xl px-6 pb-24 pt-24 text-center lg:px-8">
         <p className="font-bold text-muted-foreground">加载中…</p>
+      </div>
+    );
+  }
+
+  if (!employee) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 pb-24 pt-24 lg:px-8">
+        <div className="text-center">
+          <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_4px_0_0_var(--primary-dark)]">
+            <Sprout className="size-7" strokeWidth={2.25} />
+          </span>
+          <h1 className="mt-6 font-display text-3xl text-foreground">
+            请先完善学员档案
+          </h1>
+          <p className="mt-3 text-sm font-semibold leading-relaxed text-muted-foreground">
+            填写昵称与所在酒店后，即可开始 Grow in Hotel 成长计划、查看 HR 培训课程与学习路径。
+          </p>
+        </div>
+        <div className="mt-8">
+          <UserProfileForm onComplete={refresh} />
+        </div>
+        <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">
+          也可前往
+          <Link href="/profile" className="mx-1 font-extrabold text-primary hover:underline">
+            个人档案
+          </Link>
+          页面完善信息
+        </p>
       </div>
     );
   }
@@ -147,7 +203,9 @@ export function GrowInHotelPageContent() {
                   {" "}
                   ASK（态度 · 知识 · 技能）
                 </span>
-                三维度成长。试用期结束后可打印学习档案，放入转正材料。
+                三维度成长。试用期结束后可打印学习档案，放入转正材料。主管与储备干部可完成
+                <span className="font-extrabold text-foreground"> Management Training </span>
+                管理培训模块。
               </p>
             </div>
           </div>
@@ -226,6 +284,22 @@ export function GrowInHotelPageContent() {
           />
         </section>
 
+        {canUploadTraining && (
+          <section className="mt-8">
+            <HrTrainingUpload hotel={employee.hotel} variant="grow" />
+          </section>
+        )}
+
+        <section className="mt-8">
+          <ManagementTrainingSection
+            hotel={employee.hotel}
+            department={
+              employee.department === "other" ? "reception" : employee.department
+            }
+            employeeRole={employee.role}
+          />
+        </section>
+
         <section className="mt-8">
           <HrTrainingSection
             hotel={employee.hotel}
@@ -274,11 +348,7 @@ export function GrowInHotelPageContent() {
                 <div className="flex flex-col gap-4 border-b-2 border-border p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-xs font-extrabold uppercase text-primary">
-                      {phase.phase === "onboarding"
-                        ? "Phase 1"
-                        : phase.phase === "role"
-                          ? "Phase 2"
-                          : "Phase 3"}
+                      {PHASE_NUMBER[phase.phase] ?? "Phase"}
                     </p>
                     <h3 className="font-display text-lg text-foreground">
                       {LEARNING_PHASE_LABELS[phase.phase]}

@@ -1,5 +1,17 @@
 import mammoth from "mammoth";
 
+import {
+  buildDefaultVideoQuestions,
+} from "@/lib/course/management-theme-generator";
+import { extractSlideTextsFromPptx } from "@/lib/hr/pptx-extractor";
+import {
+  buildStructuredSlidesFromPptxSlides,
+  buildStructuredSlidesFromText,
+} from "@/lib/hr/slide-structure";
+import {
+  isVideoFile,
+  saveTrainingVideo,
+} from "@/lib/hr/training-video-storage";
 import type {
   HrTrainingModule,
   SupportedDocExtension,
@@ -27,98 +39,28 @@ export async function extractTextFromFile(file: File): Promise<string> {
     return result.value.trim();
   }
 
-  throw new Error("暂支持 TXT、Markdown、Word（.docx）格式");
-}
-
-function splitParagraphs(text: string): string[] {
-  return text
-    .split(/\n{2,}/)
-    .map((p) => p.replace(/\s+/g, " ").trim())
-    .filter((p) => p.length >= 12);
-}
-
-function chunkParagraphs(paragraphs: string[], maxLen = 380): string[] {
-  const chunks: string[] = [];
-  let current = "";
-
-  for (const p of paragraphs) {
-    if (current.length + p.length + 1 <= maxLen) {
-      current = current ? `${current}\n${p}` : p;
-    } else {
-      if (current) chunks.push(current);
-      if (p.length <= maxLen) {
-        current = p;
-      } else {
-        const sentences = p.split(/(?<=[。！？.!?])\s*/);
-        let buf = "";
-        for (const s of sentences) {
-          if (buf.length + s.length <= maxLen) buf += s;
-          else {
-            if (buf) chunks.push(buf.trim());
-            buf = s;
-          }
-        }
-        current = buf;
-      }
-    }
-  }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks;
-}
-
-function titleFromChunk(chunk: string, index: number): string {
-  const firstLine = chunk.split("\n")[0] ?? chunk;
-  const sentence = firstLine.split(/[。！？.!?]/)[0]?.trim() ?? firstLine;
-  if (sentence.length >= 4 && sentence.length <= 28) return sentence;
-  return `培训内容 ${index + 1}`;
-}
-
-function bulletsFromChunk(chunk: string): string[] {
-  const lines = chunk
-    .split(/\n/)
-    .map((l) => l.replace(/^[-*•\d.)\]]+\s*/, "").trim())
-    .filter((l) => l.length >= 4);
-  if (lines.length >= 2) return lines.slice(0, 5);
-  const sentences = chunk
-    .split(/(?<=[。！？.!?])\s*/)
-    .map((s) => s.trim())
-    .filter((s) => s.length >= 6);
-  return sentences.slice(0, 4);
-}
-
-function estimateDuration(text: string): number {
-  const chars = text.replace(/\s/g, "").length;
-  return Math.max(15, Math.min(90, Math.round(chars / 4)));
-}
-
-export function buildSlidesFromText(text: string): TrainingSlide[] {
-  const cleaned = text.trim();
-  if (!cleaned) return [];
-
-  const paragraphs = splitParagraphs(cleaned);
-  const chunks =
-    paragraphs.length > 0 ? chunkParagraphs(paragraphs) : chunkParagraphs([cleaned]);
-  if (chunks.length === 0) {
-    return [
-      {
-        id: "slide-1",
-        order: 1,
-        title: "培训内容",
-        narration: cleaned.slice(0, 380),
-        bullets: [],
-        durationSec: estimateDuration(cleaned),
-      },
-    ];
+  if (ext === ".pptx") {
+    const slides = await extractSlideTextsFromPptx(file);
+    return slides.join("\n\n");
   }
 
-  return chunks.map((chunk, index) => ({
-    id: `slide-${index + 1}`,
-    order: index + 1,
-    title: titleFromChunk(chunk, index),
-    narration: chunk,
-    bullets: bulletsFromChunk(chunk),
-    durationSec: estimateDuration(chunk),
-  }));
+  if (ext === ".ppt") {
+    throw new Error("暂不支持旧版 .ppt 格式，请另存为 .pptx 后上传");
+  }
+
+  throw new Error("暂支持 PPT（.pptx）、Word（.docx）、TXT、Markdown 格式");
+}
+
+export function buildSlidesFromText(text: string, courseTitle?: string): TrainingSlide[] {
+  return buildStructuredSlidesFromText(text, courseTitle);
+}
+
+/** PPT 每页幻灯片对应一节视频课（按三阶段结构组织） */
+export function buildSlidesFromPptxSlides(
+  slideTexts: string[],
+  courseTitle?: string
+): TrainingSlide[] {
+  return buildStructuredSlidesFromPptxSlides(slideTexts, courseTitle);
 }
 
 function pickDistractors(pool: string[], correct: string, count: number, seed: number): string[] {
@@ -207,12 +149,32 @@ export type ProcessDocumentInput = {
 export async function processDocumentToModule(
   input: ProcessDocumentInput
 ): Promise<HrTrainingModule> {
-  const text = await extractTextFromFile(input.file);
-  if (text.length < 20) {
-    throw new Error("文档内容过短，请上传至少一段完整培训文字");
+  const ext = extOf(input.file.name);
+  let slides: TrainingSlide[];
+
+  if (ext === ".pptx") {
+    const slideTexts = await extractSlideTextsFromPptx(input.file);
+    const baseTitle =
+      input.title?.trim() ||
+      input.file.name.replace(/\.[^.]+$/, "") ||
+      "酒店培训课程";
+    slides = buildSlidesFromPptxSlides(slideTexts, baseTitle);
+  } else {
+    const text = await extractTextFromFile(input.file);
+    if (text.length < 20) {
+      throw new Error("文档内容过短，请上传至少一段完整培训文字");
+    }
+    const baseTitle =
+      input.title?.trim() ||
+      input.file.name.replace(/\.[^.]+$/, "") ||
+      "酒店培训课程";
+    slides = buildSlidesFromText(text, baseTitle);
   }
 
-  const slides = buildSlidesFromText(text);
+  if (slides.length === 0) {
+    throw new Error("未能从文档中生成课程内容，请检查文件是否包含培训文字");
+  }
+
   const questions = buildQuestionsFromSlides(slides);
   const baseTitle =
     input.title?.trim() ||
@@ -228,9 +190,66 @@ export async function processDocumentToModule(
     department: input.department,
     phase: input.phase,
     ask: input.ask,
+    deliveryType: "slides",
     slides,
     questions,
     slideCount: slides.length,
+    questionCount: questions.length,
+  };
+}
+
+export type ProcessVideoInput = {
+  hotel: string;
+  file: File;
+  title?: string;
+  department: EmployeeDepartment | "all";
+  phase: LearningPhase;
+  ask: AskDimension;
+  source?: HrTrainingModule["source"];
+};
+
+export async function processVideoToModule(
+  input: ProcessVideoInput
+): Promise<HrTrainingModule> {
+  if (!isVideoFile(input.file.name)) {
+    throw new Error("请上传 MP4、WebM 或 MOV 格式视频");
+  }
+
+  const id = `video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const videoRef = await saveTrainingVideo(id, input.file);
+  const baseTitle =
+    input.title?.trim() ||
+    input.file.name.replace(/\.[^.]+$/, "") ||
+    "视频培训课程";
+
+  const slides: TrainingSlide[] = [
+    {
+      id: "slide-1",
+      order: 1,
+      title: baseTitle,
+      narration: `本课为视频培训：${baseTitle}。请完整观看视频后完成课后测验。`,
+      bullets: ["完整观看视频", "注意关键管理要点", "完成后进行测验"],
+      durationSec: 60,
+    },
+  ];
+
+  const questions = buildDefaultVideoQuestions(baseTitle);
+
+  return {
+    id,
+    hotel: input.hotel,
+    title: baseTitle,
+    fileName: input.file.name,
+    uploadedAt: new Date().toISOString(),
+    department: input.department,
+    phase: input.phase,
+    ask: input.ask,
+    deliveryType: "video",
+    videoUrl: videoRef,
+    source: input.source,
+    slides,
+    questions,
+    slideCount: 1,
     questionCount: questions.length,
   };
 }
