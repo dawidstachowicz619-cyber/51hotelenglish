@@ -85,6 +85,14 @@ export function usePhoneAuth() {
         if (!linkRes.ok) throw new Error("link_failed");
 
         await pullFromCloud();
+        const loggedInPhone = (pendingPhone || state.phone || "").replace(/\s|-/g, "");
+        if (loggedInPhone) {
+          const { updateProfile } = await import("@/lib/points/storage");
+          updateProfile((p) => ({
+            ...p,
+            phone: p.phone || loggedInPhone.replace(/^\+86/, ""),
+          }));
+        }
         await refresh();
         setOtpSent(false);
         window.dispatchEvent(new Event("auth-linked"));

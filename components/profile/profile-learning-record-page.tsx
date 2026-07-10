@@ -1,26 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 
 import { EmployeeLearningRecordView } from "@/components/admin/hr/employee-learning-record-view";
-import { ensureMainAccountLearningSeed } from "@/lib/course/main-account-learning-seed";
 import { buildCurrentEmployeeRecord } from "@/lib/hr/current-employee-record";
 import { Button } from "@/components/ui/button";
 
 export function ProfileLearningRecordPage() {
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  useEffect(() => {
-    if (ensureMainAccountLearningSeed()) {
-      setRefreshKey((k) => k + 1);
-    }
-  }, []);
-
-  const employee = useMemo(() => {
-    void refreshKey;
-    return buildCurrentEmployeeRecord();
-  }, [refreshKey]);
+  const employee = useMemo(() => buildCurrentEmployeeRecord(), []);
 
   if (!employee) {
     return (

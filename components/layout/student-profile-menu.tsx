@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ClipboardCheck,
   LogOut,
+  Phone,
   Trophy,
   User,
 } from "lucide-react";
@@ -64,8 +65,19 @@ export function StudentProfileMenu() {
 
   if (!profile) return null;
 
+  if (auth.cloudEnabled && !auth.signedIn && !auth.loading) {
+    return (
+      <Button size="sm" variant="secondary" asChild>
+        <Link href="/profile">
+          <Phone className="size-4" />
+          手机登录
+        </Link>
+      </Button>
+    );
+  }
+
   const displayName = isProfileComplete ? profile.nickname : "新学员";
-  const displayHotel = profile.hotel || "点击完善档案";
+  const displayHotel = profile.hotel || "登录后完善档案";
 
   return (
     <div className="relative" ref={ref}>
@@ -87,7 +99,11 @@ export function StudentProfileMenu() {
             {displayName}
           </p>
           <p className="max-w-[8rem] truncate text-[10px] font-semibold text-muted-foreground">
-            {isProfileComplete ? `${profile.totalPoints} 积分` : "完善档案"}
+            {isProfileComplete
+              ? `${profile.totalPoints} 积分`
+              : auth.signedIn
+                ? "完善档案"
+                : "未登录"}
           </p>
         </div>
         <ChevronDown
@@ -187,7 +203,7 @@ export function StudentProfileMenu() {
             </button>
           </div>
 
-          {!isProfileComplete && (
+          {!isProfileComplete && auth.signedIn && (
             <div className="border-t-2 border-border p-3">
               <Button size="sm" className="w-full" asChild>
                 <Link href="/profile" onClick={() => setOpen(false)}>
@@ -235,6 +251,22 @@ export function StudentProfileMobileCard({
   };
 
   if (!profile) return null;
+
+  if (auth.cloudEnabled && !auth.signedIn && !auth.loading) {
+    return (
+      <div className="mb-4 rounded-2xl border-2 border-secondary/30 bg-secondary/10 p-4 text-center">
+        <p className="text-sm font-bold text-foreground">请先登录</p>
+        <Link
+          href="/profile"
+          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary py-2.5 text-xs font-extrabold text-white"
+          onClick={onNavigate}
+        >
+          <Phone className="size-3.5" />
+          手机登录
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-4 rounded-2xl border-2 border-primary/20 bg-primary-light/30 p-4">

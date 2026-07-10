@@ -1,9 +1,13 @@
-import { getCourseTrackForDepartment, getDepartmentLabel } from "@/lib/hr/hotel-department-storage";
+import { loadLevelTestProgress } from "@/lib/assessment/level-progress-storage";
 import { buildProgressionMap } from "@/lib/course/progression-map";
 import { loadFrontDeskProgress } from "@/lib/course/progress-storage";
 import { moduleToAsk } from "@/lib/hr/ask-mapping";
+import {
+  getCourseTrackForDepartment,
+  getDepartmentLabel,
+} from "@/lib/hr/hotel-department-storage";
 import { getVisibleManagementModules } from "@/lib/hr/management-training-storage";
-import { STATIC_CURRICULUM } from "@/lib/hr/onboarding-curriculum";
+import { STATIC_CURRICULUM, type StaticCurriculumItem } from "@/lib/hr/onboarding-curriculum";
 import { getLearningHistory } from "@/lib/hr/learning-history-storage";
 import {
   getModuleScore,
@@ -96,65 +100,69 @@ function buildRoleItems(
 }
 
 function staticItemStatus(
-  itemId: string,
-  employee: EmployeeLearningRecord
+  item: StaticCurriculumItem,
+  employee: EmployeeLearningRecord,
+  history: ReturnType<typeof getLearningHistory>
 ): { status: LearningItemStatus; completedAt: string | null; score?: number } {
-  const passed = employee.passedAssessmentLevels;
-  const progress = employee.courseProgressPercent;
-  const points = employee.totalPoints;
-  const lessons = employee.completedLessons;
-
-  switch (itemId) {
-    case "ob-culture":
-      return {
-        status: points >= 50 || lessons >= 3 ? "completed" : points > 0 ? "in_progress" : "not_started",
-        completedAt: points >= 50 ? employee.lastActiveAt : null,
-      };
-    case "ob-safety":
-      return {
-        status: lessons >= 1 || points >= 30 ? "completed" : "not_started",
-        completedAt: lessons >= 1 ? employee.lastActiveAt : null,
-      };
-    case "ob-grooming":
-      return {
-        status: lessons >= 5 || points >= 100 ? "completed" : lessons >= 1 ? "in_progress" : "not_started",
-        completedAt: lessons >= 5 ? employee.lastActiveAt : null,
-      };
-    case "ob-platform":
-      return {
-        status: points > 0 ? "completed" : "not_started",
-        completedAt: points > 0 ? employee.lastActiveAt : null,
-      };
-    case "ob-baseline":
-      return {
-        status: passed.includes("A1") ? "completed" : lessons >= 10 ? "in_progress" : "not_started",
-        completedAt: passed.includes("A1") ? employee.lastActiveAt : null,
-        score: employee.assessmentScore > 0 ? employee.assessmentScore : undefined,
-      };
-    case "gen-communication":
-      return {
-        status: progress >= 15 ? "completed" : progress >= 5 ? "in_progress" : "not_started",
-        completedAt: progress >= 15 ? employee.lastActiveAt : null,
-      };
-    case "gen-recovery":
-      return {
-        status: progress >= 25 ? "completed" : progress >= 10 ? "in_progress" : "not_started",
-        completedAt: progress >= 25 ? employee.lastActiveAt : null,
-      };
-    case "gen-english":
-      return {
-        status: progress >= 40 ? "completed" : progress >= 15 ? "in_progress" : "not_started",
-        completedAt: progress >= 40 ? employee.lastActiveAt : null,
-      };
-    case "gen-cefr":
-      return {
-        status: passed.length >= 2 ? "completed" : passed.length >= 1 ? "in_progress" : "not_started",
-        completedAt: passed.length >= 2 ? employee.lastActiveAt : null,
-        score: employee.assessmentScore > 0 ? employee.assessmentScore : undefined,
-      };
-    default:
-      return { status: "not_started", completedAt: null };
+  const historyMatch = history.find(
+    (entry) =>
+      entry.title === item.title ||
+      (entry.phase === item.phase && entry.title.includes(item.title.slice(0, 6)))
+  );
+  if (historyMatch) {
+    return {
+      status: "completed",
+      completedAt: historyMatch.at,
+      score: historyMatch.score,
+    };
   }
+
+  if (item.id === "ob-baseline") {
+    if (employee.isLiveUser && typeof window !== "undefined") {
+      const a1 = loadLevelTestProgress().A1;
+      if (a1?.passed) {
+        return {
+          status: "completed",
+          completedAt: a1.date ?? employee.lastActiveAt,
+          score: a1.score,
+        };
+      }
+    }
+    if (employee.passedAssessmentLevels.includes("A1")) {
+      return {
+        status: "completed",
+        completedAt: employee.lastActiveAt,
+        score: employee.assessmentScore > 0 ? employee.assessmentScore : undefined,
+      };
+    }
+  }
+
+  if (item.id === "gen-cefr") {
+    const passedCount = employee.passedAssessmentLevels.length;
+    if (passedCount >= 2) {
+      return { status: "completed", completedAt: employee.lastActiveAt, score: employee.assessmentScore };
+    }
+    if (passedCount === 1) {
+      return { status: "in_progress", completedAt: null, score: employee.assessmentScore };
+    }
+  }
+
+  if (item.id === "gen-english") {
+    const completedLessons =
+      employee.isLiveUser && typeof window !== "undefined"
+        ? loadFrontDeskProgress().completedNodeIds.length
+        : employee.completedLessons;
+    if (completedLessons <= 0) {
+      return { status: "not_started", completedAt: null };
+    }
+    const totalTarget = Math.max(1, Math.round(employee.totalLessons * 0.4));
+    if (completedLessons >= totalTarget) {
+      return { status: "completed", completedAt: employee.lastActiveAt };
+    }
+    return { status: "in_progress", completedAt: null };
+  }
+
+  return { status: "not_started", completedAt: null };
 }
 
 function buildManagementItems(employee: EmployeeLearningRecord): LearningRecordItem[] {
@@ -162,15 +170,15 @@ function buildManagementItems(employee: EmployeeLearningRecord): LearningRecordI
   const modules = getVisibleManagementModules(employee.hotel, dept);
 
   return modules.map((mod) => {
-    const done = isModuleCompleted(mod.id);
-    const score = getModuleScore(mod.id);
+    const done = isModuleCompleted(mod.id, employee.id);
+    const score = getModuleScore(mod.id, employee.id);
     return {
       id: mod.id,
       phase: "management" as const,
       ask: mod.ask,
       title: mod.title,
       subtitle: "Management Training · 管理培训",
-      completedAt: done ? (loadTrainingCompletedAt(mod.id) ?? employee.lastActiveAt) : null,
+      completedAt: done ? (loadTrainingCompletedAt(mod.id, employee.id) ?? employee.lastActiveAt) : null,
       status: (done ? "completed" : "not_started") as LearningItemStatus,
       score: score ?? undefined,
       durationMinutes: Math.max(1, Math.ceil(mod.slideCount * 8)),
@@ -178,14 +186,15 @@ function buildManagementItems(employee: EmployeeLearningRecord): LearningRecordI
   });
 }
 
-function loadTrainingCompletedAt(moduleId: string): string | null {
+function loadTrainingCompletedAt(moduleId: string, userId: string): string | null {
   if (typeof window === "undefined") return null;
-  return loadTrainingProgress().completedAt[moduleId] ?? null;
+  return loadTrainingProgress(userId).completedAt[moduleId] ?? null;
 }
 
 function buildStaticItems(employee: EmployeeLearningRecord): LearningRecordItem[] {
+  const history = getLearningHistory(employee.id);
   return STATIC_CURRICULUM.map((item) => {
-    const { status, completedAt, score } = staticItemStatus(item.id, employee);
+    const { status, completedAt, score } = staticItemStatus(item, employee, history);
     return {
       id: item.id,
       phase: item.phase,

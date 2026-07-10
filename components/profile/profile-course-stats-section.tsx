@@ -6,7 +6,6 @@ import { BookOpen, ChevronRight } from "lucide-react";
 
 import { EmployeeCourseStatsTable } from "@/components/admin/hr/employee-course-stats-table";
 import { EmployeeLearningHistoryList } from "@/components/admin/hr/employee-learning-history-list";
-import { ensureMainAccountLearningSeed } from "@/lib/course/main-account-learning-seed";
 import { buildCurrentEmployeeRecord } from "@/lib/hr/current-employee-record";
 import {
   buildEmployeeCourseStats,
@@ -22,11 +21,7 @@ export function ProfileCourseStatsSection({ onSeeded }: Props) {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    const seeded = ensureMainAccountLearningSeed();
-    if (seeded) {
-      setRefreshKey((k) => k + 1);
-      onSeeded?.();
-    }
+    onSeeded?.();
   }, [onSeeded]);
 
   useEffect(() => {
