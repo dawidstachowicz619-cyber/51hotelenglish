@@ -75,8 +75,8 @@ export function usePoints() {
   );
 
   const saveUserInfo = useCallback(
-    (nickname: string, hotel: string, phone?: string) => {
-      setUserInfo(nickname, hotel, phone);
+    (nickname: string, hotel: string, phone?: string, realName?: string) => {
+      setUserInfo(nickname, hotel, phone, realName);
       tryLinkHrRegistration();
       refresh();
     },

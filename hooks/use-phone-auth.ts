@@ -9,6 +9,7 @@ import {
   isValidRegisterPassword,
   isValidRegisterUsername,
   isValidRealName,
+  isValidNickname,
 } from "@/lib/auth/learner-account";
 import {
   clearLocalLearnerSession,
@@ -37,7 +38,8 @@ type LearnerAuthState = {
 async function finishAuthSession(
   account: string,
   phoneHint?: string | null,
-  realName?: string | null
+  realName?: string | null,
+  nickname?: string | null
 ) {
   const normalizedPhone =
     extractMainlandPhone(account) ??
@@ -53,9 +55,11 @@ async function finishAuthSession(
   }
 
   const trimmedName = realName?.trim();
+  const trimmedNickname = nickname?.trim();
   updateProfile((p) => ({
     ...p,
-    ...(trimmedName ? { nickname: p.nickname || trimmedName } : {}),
+    ...(trimmedName ? { realName: p.realName || trimmedName } : {}),
+    ...(trimmedNickname ? { nickname: trimmedNickname } : {}),
     ...(normalizedPhone ? { phone: p.phone || normalizedPhone } : {}),
   }));
 
@@ -76,7 +80,7 @@ function resolveUserIdentity(user: {
 function resolveLocalIdentity(session: NonNullable<ReturnType<typeof getLocalLearnerSession>>) {
   return {
     phone: session.phone,
-    accountLabel: session.realName || session.username,
+    accountLabel: session.nickname || session.realName || session.username,
   };
 }
 
@@ -220,7 +224,8 @@ export function usePhoneAuth() {
         await finishAuthSession(
           localResult.session.username,
           localResult.session.phone,
-          localResult.session.realName
+          localResult.session.realName,
+          localResult.session.nickname
         );
         await refresh();
         return { ok: true as const };
@@ -235,11 +240,19 @@ export function usePhoneAuth() {
   );
 
   const registerWithPassword = useCallback(
-    async (account: string, password: string, realName?: string) => {
+    async (
+      account: string,
+      password: string,
+      realName?: string,
+      nickname?: string
+    ) => {
       setState((s) => ({ ...s, error: null, loading: true }));
       try {
         if (!isValidRealName(realName ?? "")) {
           throw new Error("invalid_name");
+        }
+        if (!isValidNickname(nickname ?? "")) {
+          throw new Error("invalid_nickname");
         }
         if (!isValidRegisterUsername(account)) {
           throw new Error("invalid_username");
@@ -267,7 +280,7 @@ export function usePhoneAuth() {
               if (signInResult.error) throw signInResult.error;
             }
 
-            await finishAuthSession(account, phone, realName);
+            await finishAuthSession(account, phone, realName, nickname);
             await refresh();
             return { ok: true as const };
           }
@@ -276,20 +289,28 @@ export function usePhoneAuth() {
         const localResult = await registerLocalLearnerAccount(
           account,
           password,
-          realName ?? ""
+          realName ?? "",
+          nickname ?? ""
         );
         if (!localResult.ok) {
           throw new Error(localResult.error);
         }
 
-        await finishAuthSession(account, extractMainlandPhone(account), realName);
+        await finishAuthSession(
+          account,
+          extractMainlandPhone(account),
+          realName,
+          nickname
+        );
         await refresh();
         return { ok: true as const };
       } catch (err) {
         const message =
           err instanceof Error && err.message === "invalid_name"
             ? "请输入 2–20 位姓名"
-            : err instanceof Error && err.message === "invalid_username"
+            : err instanceof Error && err.message === "invalid_nickname"
+              ? "请输入 2–20 位昵称"
+              : err instanceof Error && err.message === "invalid_username"
               ? "账号需为 3–20 位字母、数字或中文"
               : err instanceof Error && err.message === "invalid_password"
                 ? "密码需为 6–32 位"

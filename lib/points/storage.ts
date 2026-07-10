@@ -82,7 +82,8 @@ export function resetLearnerSession(): UserPointsProfile {
 export function setUserInfo(
   nickname: string,
   hotel: string,
-  phone?: string
+  phone?: string,
+  realName?: string
 ): UserPointsProfile {
   const normalizedPhone = phone?.trim()
     ? phone.trim().replace(/\s|-/g, "").replace(/^\+86/, "")
@@ -91,6 +92,7 @@ export function setUserInfo(
   return updateProfile((p) => ({
     ...p,
     nickname: nickname.trim(),
+    realName: (realName ?? p.realName ?? "").trim() || p.realName,
     hotel: hotel.trim() || "51HotelEnglish",
     phone: normalizedPhone || p.phone || "",
   }));

@@ -15,6 +15,7 @@ type UserProfileFormProps = {
 export function UserProfileForm({ onComplete, verifiedPhone }: UserProfileFormProps) {
   const { profile, saveUserInfo } = usePoints();
   const { hotels, loading } = useLearnerHotelOptions();
+  const [realName, setRealName] = useState(profile?.realName ?? "");
   const [nickname, setNickname] = useState(profile?.nickname ?? "");
   const [hotel, setHotel] = useState(profile?.hotel ?? "");
   const [phone, setPhone] = useState(profile?.phone ?? verifiedPhone ?? "");
@@ -38,7 +39,7 @@ export function UserProfileForm({ onComplete, verifiedPhone }: UserProfileFormPr
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nickname.trim() || !hotel.trim()) return;
+    if (!realName.trim() || !nickname.trim() || !hotel.trim()) return;
 
     const trimmedPhone = (phoneLocked ? verifiedPhone : phone)?.trim() ?? "";
     if (trimmedPhone && !isValidLearnerPhone(trimmedPhone)) {
@@ -47,7 +48,7 @@ export function UserProfileForm({ onComplete, verifiedPhone }: UserProfileFormPr
     }
 
     setPhoneError(null);
-    saveUserInfo(nickname, hotel, trimmedPhone);
+    saveUserInfo(nickname, hotel, trimmedPhone, realName);
     onComplete();
   };
 
@@ -60,14 +61,28 @@ export function UserProfileForm({ onComplete, verifiedPhone }: UserProfileFormPr
       </h2>
       <p className="mt-2 text-sm font-semibold text-muted-foreground">
         {phoneLocked
-          ? "手机号已验证。填写姓名与所在酒店，与 HR 登记一致方可解锁课程。"
-          : "填写姓名、酒店与手机号。手机号须与 HR 在后台登记的一致，方可解锁全部课程。"}
+          ? "手机号已验证。填写姓名、昵称与所在酒店，与 HR 登记一致方可解锁课程。"
+          : "填写姓名、昵称、酒店与手机号。手机号须与 HR 在后台登记的一致，方可解锁全部课程。"}
       </p>
 
       <div className="mt-6 space-y-4">
         <div>
           <label className="text-xs font-extrabold uppercase text-muted-foreground">
             姓名 *
+          </label>
+          <input
+            type="text"
+            value={realName}
+            onChange={(e) => setRealName(e.target.value)}
+            placeholder="与 HR 登记一致，如：张小明"
+            className="mt-1 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
+            required
+            maxLength={20}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-extrabold uppercase text-muted-foreground">
+            昵称 *
           </label>
           <input
             type="text"
@@ -144,6 +159,7 @@ export function UserProfileForm({ onComplete, verifiedPhone }: UserProfileFormPr
         type="submit"
         className="mt-6 w-full"
         disabled={
+          !realName.trim() ||
           !nickname.trim() ||
           !hotel.trim() ||
           !(phoneLocked ? verifiedPhone : phone.trim()) ||

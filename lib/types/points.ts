@@ -18,7 +18,10 @@ export type PointsEvent = {
 
 export type UserPointsProfile = {
   userId: string;
+  /** 昵称，用于排行榜与展示 */
   nickname: string;
+  /** 真实姓名，与 HR 登记一致 */
+  realName?: string;
   hotel: string;
   totalPoints: number;
   weeklyPoints: number;

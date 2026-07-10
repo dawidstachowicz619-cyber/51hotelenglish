@@ -13,6 +13,7 @@ import {
   isValidRegisterPassword,
   isValidRegisterUsername,
   isValidRealName,
+  isValidNickname,
 } from "@/lib/auth/learner-account";
 import { isValidMainlandPhone } from "@/lib/auth/phone";
 import {
@@ -50,6 +51,7 @@ export function LearnerLoginCard({
   );
   const [username, setUsername] = useState("");
   const [realName, setRealName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState(() => getRememberedPhone());
@@ -83,6 +85,7 @@ export function LearnerLoginCard({
 
   const canRegister =
     isValidRealName(realName) &&
+    isValidNickname(nickname) &&
     isValidRegisterUsername(username) &&
     isValidRegisterPassword(password) &&
     password === confirmPassword;
@@ -175,7 +178,7 @@ export function LearnerLoginCard({
       )}
       {isRegister && (
         <p className="mt-1 text-sm font-semibold text-muted-foreground">
-          请填写姓名并设置登录账号与密码
+          请填写姓名、昵称，并设置登录账号与密码
         </p>
       )}
 
@@ -190,8 +193,23 @@ export function LearnerLoginCard({
                 setRealName(e.target.value);
                 setRegisterError(null);
               }}
-              placeholder="如：小明"
+              placeholder="与 HR 登记一致，如：张小明"
               autoComplete="name"
+              maxLength={20}
+              className="mt-1 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <FieldLabel>昵称 *</FieldLabel>
+            <input
+              type="text"
+              value={nickname}
+              onChange={(e) => {
+                setNickname(e.target.value);
+                setRegisterError(null);
+              }}
+              placeholder="如：小明"
+              autoComplete="nickname"
               maxLength={20}
               className="mt-1 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
             />
@@ -249,7 +267,7 @@ export function LearnerLoginCard({
             size={isGate ? "lg" : "default"}
             disabled={!canRegister || auth.loading}
             onClick={() =>
-              void auth.registerWithPassword(username, password, realName).then((result) => {
+              void auth.registerWithPassword(username, password, realName, nickname).then((result) => {
                 if (result.ok) {
                   handleSuccess();
                   return;
@@ -375,7 +393,7 @@ export function LearnerLoginCard({
       <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm font-bold">
         {isRegister ? (
           <>
-            <span className="text-muted-foreground">注册需填写姓名、账号与密码</span>
+            <span className="text-muted-foreground">注册需填写姓名、昵称与账号</span>
             <Link href="/profile" className="text-foreground hover:text-primary hover:underline">
               已有账号，去登录
             </Link>

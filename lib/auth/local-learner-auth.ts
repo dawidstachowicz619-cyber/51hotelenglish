@@ -11,6 +11,7 @@ const ACCOUNTS_KEY = "51he-learner-local-accounts";
 export type LocalLearnerSession = {
   username: string;
   realName: string;
+  nickname: string;
   phone: string | null;
 };
 
@@ -18,6 +19,7 @@ type LocalLearnerAccount = {
   username: string;
   passwordHash: string;
   realName: string;
+  nickname: string;
   phone: string | null;
 };
 
@@ -61,7 +63,8 @@ export function clearLocalLearnerSession(): void {
 export async function registerLocalLearnerAccount(
   account: string,
   password: string,
-  realName: string
+  realName: string,
+  nickname: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const username = normalizeUsername(account);
   const accounts = readAccounts();
@@ -77,6 +80,7 @@ export async function registerLocalLearnerAccount(
     username,
     passwordHash,
     realName: realName.trim(),
+    nickname: nickname.trim(),
     phone,
   };
   writeAccounts(accounts);
@@ -84,6 +88,7 @@ export async function registerLocalLearnerAccount(
   setLocalLearnerSession({
     username,
     realName: realName.trim(),
+    nickname: nickname.trim(),
     phone,
   });
 
@@ -107,6 +112,7 @@ export async function signInLocalLearnerAccount(
   const session: LocalLearnerSession = {
     username: record.username,
     realName: record.realName,
+    nickname: record.nickname || record.realName,
     phone: record.phone,
   };
   setLocalLearnerSession(session);

@@ -62,7 +62,7 @@ export function ProfilePageContent() {
           </h1>
           <p className="mt-2 text-sm font-semibold leading-relaxed text-muted-foreground">
             {isRegister
-              ? "请填写姓名，并设置登录账号与密码。"
+              ? "请填写姓名、昵称，并设置登录账号与密码。"
               : "支持账号密码登录，也可切换验证码登录。"}
           </p>
         </div>

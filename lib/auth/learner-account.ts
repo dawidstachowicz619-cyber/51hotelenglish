@@ -52,6 +52,11 @@ export function isValidRealName(name: string): boolean {
   return trimmed.length >= 2 && trimmed.length <= 20;
 }
 
+export function isValidNickname(nickname: string): boolean {
+  const trimmed = nickname.trim();
+  return trimmed.length >= 2 && trimmed.length <= 20;
+}
+
 export function isValidRegisterUsername(username: string): boolean {
   const trimmed = username.trim();
   if (trimmed.length < 3 || trimmed.length > 20) return false;
