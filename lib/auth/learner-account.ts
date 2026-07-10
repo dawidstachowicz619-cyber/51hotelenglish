@@ -47,6 +47,18 @@ export function isValidLoginAccount(account: string): boolean {
   return normalizeUsername(trimmed).length >= 3;
 }
 
+export function isValidRegisterUsername(username: string): boolean {
+  const trimmed = username.trim();
+  if (trimmed.length < 3 || trimmed.length > 20) return false;
+  return /^[\w\u4e00-\u9fff-][\w\u4e00-\u9fff.-]*[\w\u4e00-\u9fff-]$|^[\w\u4e00-\u9fff]{3,20}$/.test(
+    trimmed
+  );
+}
+
 export function isValidLoginPassword(password: string): boolean {
   return password.length >= 6;
+}
+
+export function isValidRegisterPassword(password: string): boolean {
+  return password.length >= 6 && password.length <= 32;
 }

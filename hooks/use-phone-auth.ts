@@ -6,6 +6,8 @@ import {
   accountToAuthEmail,
   authEmailToAccountLabel,
   extractMainlandPhone,
+  isValidRegisterPassword,
+  isValidRegisterUsername,
 } from "@/lib/auth/learner-account";
 import { isPhoneAuthAvailable } from "@/lib/auth/phone-auth-config";
 import { saveRememberedLoginAccount, saveRememberedPhone } from "@/lib/auth/remembered-login";

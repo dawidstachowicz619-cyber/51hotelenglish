@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, LogOut, Phone, ShieldCheck } from "lucide-react";
+import { KeyRound, LogOut, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { usePhoneAuth } from "@/hooks/use-phone-auth";
 import {
   isValidLoginAccount,
   isValidLoginPassword,
+  isValidRegisterPassword,
+  isValidRegisterUsername,
 } from "@/lib/auth/learner-account";
 import { isValidMainlandPhone } from "@/lib/auth/phone";
 import {
@@ -26,6 +28,14 @@ type LearnerLoginCardProps = {
   onLoggedIn?: () => void;
 };
 
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="text-xs font-extrabold uppercase text-muted-foreground">
+      {children}
+    </label>
+  );
+}
+
 export function LearnerLoginCard({
   variant = "inline",
   isRegister = false,
@@ -33,37 +43,46 @@ export function LearnerLoginCard({
 }: LearnerLoginCardProps) {
   const auth = usePhoneAuth();
   const router = useRouter();
-  const [mode, setMode] = useState<LoginMode>(isRegister ? "password" : "password");
-  const [account, setAccount] = useState(() => getRememberedLoginAccount());
+  const [mode, setMode] = useState<LoginMode>("password");
+  const [account, setAccount] = useState(() =>
+    isRegister ? "" : getRememberedLoginAccount()
+  );
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState(() => getRememberedPhone());
   const [code, setCode] = useState("");
+  const [registerError, setRegisterError] = useState<string | null>(null);
 
   const isGate = variant === "gate";
   const rememberedAccount = getRememberedLoginAccount();
   const hasRememberedAccount =
-    Boolean(rememberedAccount) && account.trim() === rememberedAccount;
+    !isRegister && Boolean(rememberedAccount) && account.trim() === rememberedAccount;
   const hasRememberedPhone =
     phone === getRememberedPhone() && phone.length === 11;
 
   useEffect(() => {
+    if (isRegister) {
+      setMode("password");
+      return;
+    }
     if (!auth.signedIn && !auth.otpSent) {
       const remembered = getRememberedLoginAccount();
       if (remembered && !account) setAccount(remembered);
       const rememberedPhone = getRememberedPhone();
       if (rememberedPhone && !phone) setPhone(rememberedPhone);
     }
-  }, [auth.signedIn, auth.otpSent, account, phone]);
-
-  useEffect(() => {
-    if (isRegister) setMode("password");
-  }, [isRegister]);
+  }, [auth.signedIn, auth.otpSent, account, phone, isRegister]);
 
   const handleSuccess = () => {
     onLoggedIn?.();
     if (isGate) router.push("/");
   };
+
+  const canRegister =
+    isValidRegisterUsername(username) &&
+    isValidRegisterPassword(password) &&
+    password === confirmPassword;
 
   if (!auth.phoneAuthAvailable) {
     return (
@@ -143,17 +162,88 @@ export function LearnerLoginCard({
         isGate && "mx-auto max-w-md shadow-md"
       )}
     >
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-xl text-foreground">
-          {mode === "otp"
-            ? "验证码登录"
-            : isRegister
-              ? "注册账号"
-              : "账号密码登录"}
-        </h2>
-      </div>
+      <h2 className="font-display text-xl text-foreground">
+        {isRegister ? "注册账号" : mode === "otp" ? "验证码登录" : "账号密码登录"}
+      </h2>
+      {!isRegister && mode === "password" && (
+        <p className="mt-1 text-sm font-semibold text-muted-foreground">
+          可使用账号、手机号或邮箱登录
+        </p>
+      )}
+      {isRegister && (
+        <p className="mt-1 text-sm font-semibold text-muted-foreground">
+          请设置登录账号与密码，注册成功后即可开始学习
+        </p>
+      )}
 
-      {mode === "password" ? (
+      {isRegister ? (
+        <div className="mt-5 space-y-4">
+          <div>
+            <FieldLabel>账号 *</FieldLabel>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setRegisterError(null);
+              }}
+              placeholder="3–20 位字母、数字或中文"
+              autoComplete="username"
+              maxLength={20}
+              className="mt-1 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <FieldLabel>登录密码 *</FieldLabel>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setRegisterError(null);
+              }}
+              placeholder="至少 6 位"
+              autoComplete="new-password"
+              maxLength={32}
+              className="mt-1 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <FieldLabel>确认密码 *</FieldLabel>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                setRegisterError(null);
+              }}
+              placeholder="再次输入密码"
+              autoComplete="new-password"
+              maxLength={32}
+              className="mt-1 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
+            />
+          </div>
+          {confirmPassword && password !== confirmPassword && (
+            <p className="text-xs font-bold text-red">两次输入的密码不一致</p>
+          )}
+          <Button
+            className="mt-1 w-full"
+            size={isGate ? "lg" : "default"}
+            disabled={!canRegister || auth.loading}
+            onClick={() =>
+              void auth.registerWithPassword(username, password).then((result) => {
+                if (result.ok) {
+                  handleSuccess();
+                  return;
+                }
+                setRegisterError(result.error ?? "注册失败");
+              })
+            }
+          >
+            注册并登录
+          </Button>
+        </div>
+      ) : mode === "password" ? (
         <div className="mt-5 space-y-3">
           <input
             type="text"
@@ -168,45 +258,29 @@ export function LearnerLoginCard({
               已填入上次登录的账号
             </p>
           )}
-          <div className="relative">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="登录密码"
-              autoComplete={isRegister ? "new-password" : "current-password"}
-              className="w-full rounded-xl border-2 border-border bg-white px-4 py-3 pr-24 text-sm font-semibold outline-none focus:border-primary"
-            />
-          </div>
-          {isRegister && (
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="确认密码"
-              autoComplete="new-password"
-              className="w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
-            />
-          )}
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="登录密码"
+            autoComplete="current-password"
+            className="w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
+          />
           <Button
             className="mt-1 w-full"
             size={isGate ? "lg" : "default"}
             disabled={
               !isValidLoginAccount(account) ||
               !isValidLoginPassword(password) ||
-              (isRegister && password !== confirmPassword) ||
               auth.loading
             }
             onClick={() =>
-              void (isRegister
-                ? auth.registerWithPassword(account, password)
-                : auth.signInWithPassword(account, password)
-              ).then((result) => {
+              void auth.signInWithPassword(account, password).then((result) => {
                 if (result.ok) handleSuccess();
               })
             }
           >
-            {isRegister ? "注册" : "登录"}
+            登录
           </Button>
         </div>
       ) : (
@@ -276,47 +350,56 @@ export function LearnerLoginCard({
         </div>
       )}
 
-      {auth.error && (
-        <p className="mt-3 text-xs font-bold text-red">{auth.error}</p>
+      {(auth.error || registerError) && (
+        <p className="mt-3 text-xs font-bold text-red">{registerError ?? auth.error}</p>
       )}
 
       <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm font-bold">
-        {mode === "password" ? (
-          <button
-            type="button"
-            className="text-secondary hover:underline"
-            onClick={() => {
-              setMode("otp");
-              setPassword("");
-              setConfirmPassword("");
-            }}
-          >
-            验证码登录
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="text-secondary hover:underline"
-            onClick={() => {
-              setMode("password");
-              setCode("");
-            }}
-          >
-            账号密码登录
-          </button>
-        )}
-
         {isRegister ? (
-          <Link href="/profile" className="text-foreground hover:text-primary hover:underline">
-            已有账号，去登录
-          </Link>
+          <>
+            <span className="text-muted-foreground">注册需设置账号与密码</span>
+            <Link href="/profile" className="text-foreground hover:text-primary hover:underline">
+              已有账号，去登录
+            </Link>
+          </>
+        ) : mode === "password" ? (
+          <>
+            <button
+              type="button"
+              className="text-secondary hover:underline"
+              onClick={() => {
+                setMode("otp");
+                setPassword("");
+              }}
+            >
+              验证码登录
+            </button>
+            <Link
+              href="/profile?register=1"
+              className="text-foreground hover:text-primary hover:underline"
+            >
+              免费注册
+            </Link>
+          </>
         ) : (
-          <Link
-            href="/profile?register=1"
-            className="text-foreground hover:text-primary hover:underline"
-          >
-            免费注册
-          </Link>
+          <>
+            <button
+              type="button"
+              className="text-secondary hover:underline"
+              onClick={() => {
+                setMode("password");
+                setCode("");
+              }}
+            >
+              账号密码登录
+            </button>
+            <Link
+              href="/profile?register=1"
+              className="text-foreground hover:text-primary hover:underline"
+            >
+              免费注册
+            </Link>
+          </>
         )}
       </div>
     </div>
