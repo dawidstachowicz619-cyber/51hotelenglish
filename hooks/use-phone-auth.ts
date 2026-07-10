@@ -2,25 +2,67 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import {
+  accountToAuthEmail,
+  authEmailToAccountLabel,
+  extractMainlandPhone,
+} from "@/lib/auth/learner-account";
 import { isPhoneAuthAvailable } from "@/lib/auth/phone-auth-config";
-import { saveRememberedPhone } from "@/lib/auth/remembered-phone";
+import { saveRememberedLoginAccount, saveRememberedPhone } from "@/lib/auth/remembered-login";
 import { toE164Phone } from "@/lib/auth/phone";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { isCloudSyncActive, pullFromCloud } from "@/lib/storage/cloud-sync";
 import { updateProfile } from "@/lib/points/storage";
 
-type PhoneAuthState = {
+type LearnerAuthState = {
   loading: boolean;
   signedIn: boolean;
   phone: string | null;
+  accountLabel: string | null;
   error: string | null;
 };
 
+async function finishAuthSession(account: string, phoneHint?: string | null) {
+  const normalizedPhone =
+    extractMainlandPhone(account) ??
+    (phoneHint ? phoneHint.replace(/^\+86/, "") : null);
+
+  if (isCloudSyncActive()) {
+    const linkRes = await fetch("/api/auth/link", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!linkRes.ok) throw new Error("link_failed");
+    await pullFromCloud();
+  }
+
+  if (normalizedPhone) {
+    updateProfile((p) => ({
+      ...p,
+      phone: p.phone || normalizedPhone,
+    }));
+  }
+
+  saveRememberedLoginAccount(account);
+  if (normalizedPhone) saveRememberedPhone(normalizedPhone);
+  window.dispatchEvent(new Event("auth-linked"));
+}
+
+function resolveUserIdentity(user: {
+  phone?: string | null;
+  email?: string | null;
+}): { phone: string | null; accountLabel: string | null } {
+  const phone = user.phone?.replace(/^\+86/, "") ?? null;
+  const accountLabel = phone ?? authEmailToAccountLabel(user.email);
+  return { phone, accountLabel };
+}
+
 export function usePhoneAuth() {
-  const [state, setState] = useState<PhoneAuthState>({
+  const [state, setState] = useState<LearnerAuthState>({
     loading: true,
     signedIn: false,
     phone: null,
+    accountLabel: null,
     error: null,
   });
   const [otpSent, setOtpSent] = useState(false);
@@ -28,17 +70,27 @@ export function usePhoneAuth() {
 
   const refresh = useCallback(async () => {
     if (!isPhoneAuthAvailable()) {
-      setState({ loading: false, signedIn: false, phone: null, error: null });
+      setState({
+        loading: false,
+        signedIn: false,
+        phone: null,
+        accountLabel: null,
+        error: null,
+      });
       return;
     }
 
     const supabase = createSupabaseBrowserClient();
     const { data } = await supabase.auth.getUser();
-    const phone = data.user?.phone?.replace(/^\+86/, "") ?? null;
+    const identity = data.user
+      ? resolveUserIdentity(data.user)
+      : { phone: null, accountLabel: null };
+
     setState({
       loading: false,
       signedIn: !!data.user,
-      phone,
+      phone: identity.phone,
+      accountLabel: identity.accountLabel,
       error: null,
     });
   }, []);
@@ -55,6 +107,7 @@ export function usePhoneAuth() {
       const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
       if (error) throw error;
       setPendingPhone(phone);
+      saveRememberedLoginAccount(phone);
       saveRememberedPhone(phone);
       setOtpSent(true);
       setState((s) => ({ ...s, loading: false, error: null }));
@@ -82,28 +135,10 @@ export function usePhoneAuth() {
         });
         if (error) throw error;
 
-        const loggedInPhone = (pendingPhone || state.phone || "").replace(/\s|-/g, "");
-        const normalizedPhone = loggedInPhone.replace(/^\+86/, "");
-
-        if (isCloudSyncActive()) {
-          const linkRes = await fetch("/api/auth/link", {
-            method: "POST",
-            credentials: "include",
-          });
-          if (!linkRes.ok) throw new Error("link_failed");
-          await pullFromCloud();
-        }
-
-        if (normalizedPhone) {
-          saveRememberedPhone(normalizedPhone);
-          updateProfile((p) => ({
-            ...p,
-            phone: p.phone || normalizedPhone,
-          }));
-        }
+        const account = pendingPhone || state.phone || "";
+        await finishAuthSession(account, account);
         await refresh();
         setOtpSent(false);
-        window.dispatchEvent(new Event("auth-linked"));
         return { ok: true as const };
       } catch {
         const message = "验证码错误或已过期";
@@ -112,6 +147,76 @@ export function usePhoneAuth() {
       }
     },
     [pendingPhone, state.phone, refresh]
+  );
+
+  const signInWithPassword = useCallback(
+    async (account: string, password: string) => {
+      setState((s) => ({ ...s, error: null, loading: true }));
+      try {
+        const email = accountToAuthEmail(account);
+        const supabase = createSupabaseBrowserClient();
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+
+        await finishAuthSession(account);
+        await refresh();
+        return { ok: true as const };
+      } catch (err) {
+        const message =
+          err instanceof Error && err.message.includes("Invalid login credentials")
+            ? "账号或密码错误"
+            : "登录失败，请检查账号和密码";
+        setState((s) => ({ ...s, loading: false, error: message }));
+        return { ok: false as const, error: message };
+      }
+    },
+    [refresh]
+  );
+
+  const registerWithPassword = useCallback(
+    async (account: string, password: string) => {
+      setState((s) => ({ ...s, error: null, loading: true }));
+      try {
+        const email = accountToAuthEmail(account);
+        const phone = extractMainlandPhone(account);
+        const supabase = createSupabaseBrowserClient();
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          phone: phone ? toE164Phone(phone) : undefined,
+        });
+        if (error) throw error;
+
+        if (data.session) {
+          await finishAuthSession(account, phone);
+          await refresh();
+          return { ok: true as const };
+        }
+
+        const signInResult = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInResult.error) {
+          throw signInResult.error;
+        }
+
+        await finishAuthSession(account, phone);
+        await refresh();
+        return { ok: true as const };
+      } catch (err) {
+        const message =
+          err instanceof Error && err.message.includes("already registered")
+            ? "该账号已注册，请直接登录"
+            : "注册失败，请更换账号或稍后再试";
+        setState((s) => ({ ...s, loading: false, error: message }));
+        return { ok: false as const, error: message };
+      }
+    },
+    [refresh]
   );
 
   const signOut = useCallback(async () => {
@@ -134,9 +239,13 @@ export function usePhoneAuth() {
     pendingPhone,
     sendOtp,
     verifyOtp,
+    signInWithPassword,
+    registerWithPassword,
     signOut,
     refresh,
     cloudEnabled: isCloudSyncActive(),
     phoneAuthAvailable: isPhoneAuthAvailable(),
   };
 }
+
+export const useLearnerAuth = usePhoneAuth;

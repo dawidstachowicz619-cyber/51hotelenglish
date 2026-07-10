@@ -5,11 +5,11 @@ import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Trophy, TrendingUp, Star, History, Building2 } from "lucide-react";
 
-import { PhoneLoginCard } from "@/components/auth/phone-login-card";
+import { LearnerLoginCard } from "@/components/auth/learner-login-card";
 import { UserProfileForm } from "@/components/points/user-profile-form";
 import { ProfileCourseStatsSection } from "@/components/profile/profile-course-stats-section";
 import { useLearnerSession } from "@/hooks/use-learner-session";
-import { maskPhone } from "@/lib/auth/remembered-phone";
+import { maskPhone } from "@/lib/auth/remembered-login";
 
 export function ProfilePageContent() {
   const searchParams = useSearchParams();
@@ -62,13 +62,17 @@ export function ProfilePageContent() {
           </h1>
           <p className="mt-2 text-sm font-semibold leading-relaxed text-muted-foreground">
             {isRegister
-              ? "使用手机号验证即可注册，无需填写酒店信息。"
-              : "输入手机号验证码即可登录，无需选择酒店。"}
+              ? "使用手机号或用户名注册，设置密码后即可开始学习。"
+              : "支持账号密码登录，也可切换验证码登录。"}
           </p>
         </div>
 
         <div className="mt-10">
-          <PhoneLoginCard variant="gate" onLoggedIn={refresh} />
+          <LearnerLoginCard
+            variant="gate"
+            isRegister={isRegister}
+            onLoggedIn={refresh}
+          />
         </div>
       </div>
     );
@@ -185,7 +189,7 @@ export function ProfilePageContent() {
 
       {auth.phoneAuthAvailable && auth.signedIn && isProfileComplete && (
         <div className="mt-10">
-          <PhoneLoginCard onLoggedIn={refresh} />
+          <LearnerLoginCard onLoggedIn={refresh} />
         </div>
       )}
 

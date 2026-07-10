@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { usePhoneAuth } from "@/hooks/use-phone-auth";
 import { usePoints } from "@/hooks/use-points";
-import { maskPhone } from "@/lib/auth/remembered-phone";
+import { maskPhone } from "@/lib/auth/remembered-login";
 import { resetLearnerSession } from "@/lib/points/storage";
 import { cn } from "@/lib/utils";
 
@@ -107,8 +107,8 @@ export function StudentProfileMenu() {
 
   const displayName = isProfileComplete
     ? profile.nickname
-    : auth.signedIn && (auth.phone || profile.phone)
-      ? maskPhone(auth.phone || profile.phone || "")
+    : auth.signedIn && (auth.phone || auth.accountLabel || profile.phone)
+      ? maskPhone(auth.phone || profile.phone || auth.accountLabel || "")
       : "新学员";
   const displayHotel = profile.hotel || (auth.signedIn ? "已登录" : "完善档案");
 
@@ -314,8 +314,8 @@ export function StudentProfileMobileCard({
           <p className="truncate font-bold text-foreground">
             {isProfileComplete
               ? profile.nickname
-              : auth.signedIn && (auth.phone || profile.phone)
-                ? maskPhone(auth.phone || profile.phone || "")
+              : auth.signedIn && (auth.phone || auth.accountLabel || profile.phone)
+                ? maskPhone(auth.phone || profile.phone || auth.accountLabel || "")
                 : "新学员"}
           </p>
           <p className="truncate text-xs font-semibold text-muted-foreground">
