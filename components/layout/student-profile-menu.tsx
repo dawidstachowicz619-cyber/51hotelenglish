@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ClipboardCheck,
   LogOut,
-  Phone,
   Trophy,
   User,
 } from "lucide-react";
@@ -21,6 +20,33 @@ import { cn } from "@/lib/utils";
 function getInitial(nickname: string): string {
   if (!nickname) return "学";
   return nickname.charAt(0).toUpperCase();
+}
+
+function isLearnerAuthenticated(
+  auth: ReturnType<typeof usePhoneAuth>,
+  isProfileComplete: boolean
+): boolean {
+  return auth.cloudEnabled ? auth.signedIn : isProfileComplete;
+}
+
+function LearnerAuthButtons({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex items-center gap-3", className)}>
+      <Link
+        href="/profile"
+        className="rounded-full bg-secondary/15 px-4 py-1.5 text-sm font-bold text-secondary transition-colors hover:bg-secondary/25"
+      >
+        登录
+      </Link>
+      <span className="h-4 w-px bg-border" aria-hidden />
+      <Link
+        href="/profile?register=1"
+        className="text-sm font-bold text-foreground transition-colors hover:text-primary"
+      >
+        注册
+      </Link>
+    </div>
+  );
 }
 
 export function StudentProfileMenu() {
@@ -65,19 +91,21 @@ export function StudentProfileMenu() {
 
   if (!profile) return null;
 
-  if (auth.cloudEnabled && !auth.signedIn && !auth.loading) {
+  if (auth.loading) {
     return (
-      <Button size="sm" variant="secondary" asChild>
-        <Link href="/profile">
-          <Phone className="size-4" />
-          手机登录
-        </Link>
-      </Button>
+      <div
+        className="hidden h-9 w-[7.5rem] animate-pulse rounded-full bg-muted md:block"
+        aria-hidden
+      />
     );
   }
 
+  if (!isLearnerAuthenticated(auth, isProfileComplete)) {
+    return <LearnerAuthButtons />;
+  }
+
   const displayName = isProfileComplete ? profile.nickname : "新学员";
-  const displayHotel = profile.hotel || "登录后完善档案";
+  const displayHotel = profile.hotel || "完善档案";
 
   return (
     <div className="relative" ref={ref}>
@@ -101,9 +129,7 @@ export function StudentProfileMenu() {
           <p className="max-w-[8rem] truncate text-[10px] font-semibold text-muted-foreground">
             {isProfileComplete
               ? `${profile.totalPoints} 积分`
-              : auth.signedIn
-                ? "完善档案"
-                : "未登录"}
+              : "完善档案"}
           </p>
         </div>
         <ChevronDown
@@ -252,17 +278,22 @@ export function StudentProfileMobileCard({
 
   if (!profile) return null;
 
-  if (auth.cloudEnabled && !auth.signedIn && !auth.loading) {
+  if (!isLearnerAuthenticated(auth, isProfileComplete)) {
     return (
-      <div className="mb-4 rounded-2xl border-2 border-secondary/30 bg-secondary/10 p-4 text-center">
-        <p className="text-sm font-bold text-foreground">请先登录</p>
+      <div className="mb-4 flex items-center justify-center gap-3 rounded-2xl border-2 border-border bg-muted/30 px-4 py-3">
         <Link
           href="/profile"
-          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary py-2.5 text-xs font-extrabold text-white"
+          className="flex-1 rounded-full bg-secondary py-2 text-center text-sm font-bold text-white"
           onClick={onNavigate}
         >
-          <Phone className="size-3.5" />
-          手机登录
+          登录
+        </Link>
+        <Link
+          href="/profile?register=1"
+          className="flex-1 py-2 text-center text-sm font-bold text-foreground"
+          onClick={onNavigate}
+        >
+          注册
         </Link>
       </div>
     );
