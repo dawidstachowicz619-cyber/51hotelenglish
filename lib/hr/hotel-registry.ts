@@ -1,4 +1,5 @@
 import { getAvailableHotels as getDemoHotels } from "@/lib/hr/demo-roster";
+import { isReservedHotelName } from "@/lib/hr/learner-hotel-options";
 
 const REGISTRY_KEY = "51he-hotel-registry";
 
@@ -29,7 +30,7 @@ export function getAllManagedHotels(): string[] {
 
 export function registerHotel(name: string): boolean {
   const trimmed = name.trim();
-  if (!trimmed) return false;
+  if (!trimmed || isReservedHotelName(trimmed)) return false;
   const existing = getAllManagedHotels();
   if (existing.some((h) => h.toLowerCase() === trimmed.toLowerCase())) {
     return false;

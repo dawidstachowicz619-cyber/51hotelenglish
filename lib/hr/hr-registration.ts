@@ -1,4 +1,5 @@
 import { buildCurrentEmployeeRecord } from "@/lib/hr/current-employee-record";
+import { isTrialHotel } from "@/lib/hr/learner-hotel-options";
 import { getHotelEmployees, upsertHotelEmployee } from "@/lib/hr/roster-storage";
 import {
   HR_REGISTRATION_EVENT,
@@ -22,7 +23,7 @@ export function findHrRosterMatch(): EmployeeLearningRecord | null {
   const profile = loadProfile();
   const phone = normalizeLearnerPhone(profile.phone ?? "");
   const hotel = profile.hotel?.trim();
-  if (!phone || !hotel || hotel === "51HotelEnglish") return null;
+  if (!phone || !hotel || hotel === "51HotelEnglish" || isTrialHotel(hotel)) return null;
 
   return (
     getHotelEmployees(hotel).find(

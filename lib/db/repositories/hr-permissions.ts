@@ -5,6 +5,7 @@ import {
 } from "@/lib/types/hr-permissions";
 import { HR_PERMISSION_DEFAULTS } from "@/lib/hr/hotel-hr-permissions";
 import { ensureHotel, listHotels } from "@/lib/db/repositories/hotels";
+import { isReservedHotelName } from "@/lib/hr/learner-hotel-options";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 function normalizePermissions(
@@ -68,7 +69,7 @@ export async function listManagedHotelsCloud(): Promise<string[]> {
 
 export async function registerHotelCloud(name: string): Promise<boolean> {
   const trimmed = name.trim();
-  if (!trimmed) return false;
+  if (!trimmed || isReservedHotelName(trimmed)) return false;
   const existing = await listManagedHotelsCloud();
   if (existing.some((h) => h.toLowerCase() === trimmed.toLowerCase())) {
     return false;

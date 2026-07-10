@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useLearnerHotelOptions } from "@/hooks/use-learner-hotel-options";
 import { isValidLearnerPhone } from "@/lib/hr/hr-registration";
 import { usePoints } from "@/hooks/use-points";
 
@@ -12,14 +13,23 @@ type UserProfileFormProps = {
 
 export function UserProfileForm({ onComplete }: UserProfileFormProps) {
   const { profile, saveUserInfo } = usePoints();
+  const { hotels, loading } = useLearnerHotelOptions();
   const [nickname, setNickname] = useState(profile?.nickname ?? "");
   const [hotel, setHotel] = useState(profile?.hotel ?? "");
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
+  const hotelOptions = useMemo(() => {
+    const saved = profile?.hotel?.trim();
+    if (saved && !hotels.includes(saved)) {
+      return [saved, ...hotels];
+    }
+    return hotels;
+  }, [hotels, profile?.hotel]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nickname.trim()) return;
+    if (!nickname.trim() || !hotel.trim()) return;
 
     const trimmedPhone = phone.trim();
     if (trimmedPhone && !isValidLearnerPhone(trimmedPhone)) {
@@ -55,18 +65,32 @@ export function UserProfileForm({ onComplete }: UserProfileFormProps) {
           />
         </div>
         <div>
-          <label className="text-xs font-extrabold uppercase text-muted-foreground">
+          <label
+            htmlFor="learner-hotel"
+            className="text-xs font-extrabold uppercase text-muted-foreground"
+          >
             所在酒店 *
           </label>
-          <input
-            type="text"
+          <select
+            id="learner-hotel"
             value={hotel}
             onChange={(e) => setHotel(e.target.value)}
-            placeholder="如：上海XX酒店"
             className="mt-1 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
-            maxLength={40}
             required
-          />
+            disabled={loading}
+          >
+            <option value="" disabled>
+              {loading ? "加载酒店列表…" : "请选择酒店"}
+            </option>
+            {hotelOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-[10px] font-semibold text-muted-foreground">
+            酒店由系统管理员录入；新用户可先选「试用酒店」体验 1 课。
+          </p>
         </div>
         <div>
           <label className="text-xs font-extrabold uppercase text-muted-foreground">
@@ -96,7 +120,7 @@ export function UserProfileForm({ onComplete }: UserProfileFormProps) {
       <Button
         type="submit"
         className="mt-6 w-full"
-        disabled={!nickname.trim() || !hotel.trim() || !phone.trim()}
+        disabled={!nickname.trim() || !hotel.trim() || !phone.trim() || loading}
       >
         保存档案
       </Button>
