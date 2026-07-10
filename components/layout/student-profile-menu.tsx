@@ -25,9 +25,9 @@ function getInitial(nickname: string): string {
 
 function isLearnerAuthenticated(
   auth: ReturnType<typeof usePhoneAuth>,
-  isProfileComplete: boolean
+  _isProfileComplete: boolean
 ): boolean {
-  return auth.phoneAuthAvailable ? auth.signedIn : isProfileComplete;
+  return auth.signedIn;
 }
 
 function LearnerAuthButtons({ className }: { className?: string }) {
@@ -69,7 +69,7 @@ export function StudentProfileMenu() {
     setSigningOut(true);
     setOpen(false);
     try {
-      if (auth.phoneAuthAvailable && auth.signedIn) {
+      if (auth.signedIn) {
         await auth.signOut();
       }
       resetLearnerSession();
@@ -270,7 +270,7 @@ export function StudentProfileMobileCard({
     setSigningOut(true);
     onNavigate?.();
     try {
-      if (auth.phoneAuthAvailable && auth.signedIn) {
+      if (auth.signedIn) {
         await auth.signOut();
       }
       resetLearnerSession();

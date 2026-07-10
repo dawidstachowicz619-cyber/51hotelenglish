@@ -87,7 +87,7 @@ export function LearnerLoginCard({
     isValidRegisterPassword(password) &&
     password === confirmPassword;
 
-  if (!auth.phoneAuthAvailable) {
+  if (!auth.learnerAuthAvailable) {
     return (
       <div
         className={cn(
@@ -384,8 +384,10 @@ export function LearnerLoginCard({
           <>
             <button
               type="button"
-              className="text-secondary hover:underline"
+              className="text-secondary hover:underline disabled:opacity-50"
+              disabled={!auth.phoneOtpAvailable}
               onClick={() => {
+                if (!auth.phoneOtpAvailable) return;
                 setMode("otp");
                 setPassword("");
               }}

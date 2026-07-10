@@ -217,7 +217,7 @@ export function ProfilePageContent() {
         </div>
       )}
 
-      {!isProfileComplete && (!auth.signedIn || showProfileSetup) && (
+      {!isProfileComplete && (!auth.signedIn || showProfileSetup) && !isRegister && (
         <div className="mt-8">
           <UserProfileForm
             onComplete={refresh}

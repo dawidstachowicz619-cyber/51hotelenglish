@@ -2,6 +2,7 @@ import type { UserPointsProfile, PointsEvent, PointsAction } from "@/lib/types/p
 import { getWeekStartISO, POINTS_RULES } from "@/lib/points/rules";
 import { scheduleCloudPush } from "@/lib/storage/cloud-sync";
 import { clearLearnerLocalData } from "@/lib/storage/learner-local-data";
+import { clearLocalLearnerSession } from "@/lib/auth/local-learner-auth";
 
 const STORAGE_KEY = "51he-points-profile";
 
@@ -68,6 +69,7 @@ export function updateProfile(
 
 export function resetLearnerSession(): UserPointsProfile {
   clearLearnerLocalData();
+  clearLocalLearnerSession();
   const profile = createDefaultProfile();
   saveProfile(profile);
   if (typeof window !== "undefined") {

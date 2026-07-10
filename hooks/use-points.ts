@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { getLocalLearnerSession } from "@/lib/auth/local-learner-auth";
 import { isPhoneAuthAvailable } from "@/lib/auth/phone-auth-config";
 import {
   addPoints,
@@ -31,6 +32,8 @@ export function usePoints() {
       const supabase = createSupabaseBrowserClient();
       const { data } = await supabase.auth.getUser();
       mayClaim = !!data.user;
+    } else if (getLocalLearnerSession()) {
+      mayClaim = true;
     }
 
     if (mayClaim) {

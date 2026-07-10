@@ -7,20 +7,15 @@ export function useLearnerSession() {
   const auth = usePhoneAuth();
   const points = usePoints();
 
-  const phoneAuthRequired = auth.phoneAuthAvailable;
-  const isAuthenticated = phoneAuthRequired
-    ? auth.signedIn
-    : points.isProfileComplete;
-  const showLoginGate =
-    phoneAuthRequired && !auth.loading && !auth.signedIn;
-  const showProfileSetup = isAuthenticated && !points.isProfileComplete;
+  const isAuthenticated = auth.signedIn;
+  const showLoginGate = !auth.loading && !auth.signedIn;
 
   return {
     auth,
     points,
-    phoneAuthRequired,
+    phoneAuthRequired: auth.phoneAuthAvailable,
     isAuthenticated,
     showLoginGate,
-    showProfileSetup,
+    showProfileSetup: isAuthenticated && !points.isProfileComplete,
   };
 }
