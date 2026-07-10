@@ -60,14 +60,14 @@ export function UserProfileForm({ onComplete, verifiedPhone }: UserProfileFormPr
       </h2>
       <p className="mt-2 text-sm font-semibold text-muted-foreground">
         {phoneLocked
-          ? "手机号已验证。填写昵称与所在酒店，与 HR 登记一致方可解锁课程。"
-          : "填写昵称、酒店与手机号。手机号须与 HR 在后台登记的一致，方可解锁全部课程。"}
+          ? "手机号已验证。填写姓名与所在酒店，与 HR 登记一致方可解锁课程。"
+          : "填写姓名、酒店与手机号。手机号须与 HR 在后台登记的一致，方可解锁全部课程。"}
       </p>
 
       <div className="mt-6 space-y-4">
         <div>
           <label className="text-xs font-extrabold uppercase text-muted-foreground">
-            昵称 *
+            姓名 *
           </label>
           <input
             type="text"

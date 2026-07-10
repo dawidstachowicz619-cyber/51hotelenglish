@@ -8,6 +8,7 @@ import {
   extractMainlandPhone,
   isValidRegisterPassword,
   isValidRegisterUsername,
+  isValidRealName,
 } from "@/lib/auth/learner-account";
 import { isPhoneAuthAvailable } from "@/lib/auth/phone-auth-config";
 import { saveRememberedLoginAccount, saveRememberedPhone } from "@/lib/auth/remembered-login";
@@ -24,7 +25,11 @@ type LearnerAuthState = {
   error: string | null;
 };
 
-async function finishAuthSession(account: string, phoneHint?: string | null) {
+async function finishAuthSession(
+  account: string,
+  phoneHint?: string | null,
+  realName?: string | null
+) {
   const normalizedPhone =
     extractMainlandPhone(account) ??
     (phoneHint ? phoneHint.replace(/^\+86/, "") : null);
@@ -38,12 +43,12 @@ async function finishAuthSession(account: string, phoneHint?: string | null) {
     await pullFromCloud();
   }
 
-  if (normalizedPhone) {
-    updateProfile((p) => ({
-      ...p,
-      phone: p.phone || normalizedPhone,
-    }));
-  }
+  const trimmedName = realName?.trim();
+  updateProfile((p) => ({
+    ...p,
+    ...(trimmedName ? { nickname: p.nickname || trimmedName } : {}),
+    ...(normalizedPhone ? { phone: p.phone || normalizedPhone } : {}),
+  }));
 
   saveRememberedLoginAccount(account);
   if (normalizedPhone) saveRememberedPhone(normalizedPhone);
@@ -179,9 +184,19 @@ export function usePhoneAuth() {
   );
 
   const registerWithPassword = useCallback(
-    async (account: string, password: string) => {
+    async (account: string, password: string, realName?: string) => {
       setState((s) => ({ ...s, error: null, loading: true }));
       try {
+        if (!isValidRealName(realName ?? "")) {
+          throw new Error("invalid_name");
+        }
+        if (!isValidRegisterUsername(account)) {
+          throw new Error("invalid_username");
+        }
+        if (!isValidRegisterPassword(password)) {
+          throw new Error("invalid_password");
+        }
+
         const email = accountToAuthEmail(account);
         const phone = extractMainlandPhone(account);
         const supabase = createSupabaseBrowserClient();
@@ -193,7 +208,7 @@ export function usePhoneAuth() {
         if (error) throw error;
 
         if (data.session) {
-          await finishAuthSession(account, phone);
+          await finishAuthSession(account, phone, realName);
           await refresh();
           return { ok: true as const };
         }
@@ -206,14 +221,20 @@ export function usePhoneAuth() {
           throw signInResult.error;
         }
 
-        await finishAuthSession(account, phone);
+        await finishAuthSession(account, phone, realName);
         await refresh();
         return { ok: true as const };
       } catch (err) {
         const message =
-          err instanceof Error && err.message.includes("already registered")
-            ? "该账号已注册，请直接登录"
-            : "注册失败，请更换账号或稍后再试";
+          err instanceof Error && err.message === "invalid_name"
+            ? "请输入 2–20 位姓名"
+            : err instanceof Error && err.message === "invalid_username"
+              ? "账号需为 3–20 位字母、数字或中文"
+              : err instanceof Error && err.message === "invalid_password"
+                ? "密码需为 6–32 位"
+                : err instanceof Error && err.message.includes("already registered")
+                  ? "该账号已注册，请直接登录"
+                  : "注册失败，请更换账号或稍后再试";
         setState((s) => ({ ...s, loading: false, error: message }));
         return { ok: false as const, error: message };
       }

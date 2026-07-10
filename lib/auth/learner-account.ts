@@ -47,6 +47,11 @@ export function isValidLoginAccount(account: string): boolean {
   return normalizeUsername(trimmed).length >= 3;
 }
 
+export function isValidRealName(name: string): boolean {
+  const trimmed = name.trim();
+  return trimmed.length >= 2 && trimmed.length <= 20;
+}
+
 export function isValidRegisterUsername(username: string): boolean {
   const trimmed = username.trim();
   if (trimmed.length < 3 || trimmed.length > 20) return false;

@@ -12,6 +12,7 @@ import {
   isValidLoginPassword,
   isValidRegisterPassword,
   isValidRegisterUsername,
+  isValidRealName,
 } from "@/lib/auth/learner-account";
 import { isValidMainlandPhone } from "@/lib/auth/phone";
 import {
@@ -48,6 +49,7 @@ export function LearnerLoginCard({
     isRegister ? "" : getRememberedLoginAccount()
   );
   const [username, setUsername] = useState("");
+  const [realName, setRealName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState(() => getRememberedPhone());
@@ -80,6 +82,7 @@ export function LearnerLoginCard({
   };
 
   const canRegister =
+    isValidRealName(realName) &&
     isValidRegisterUsername(username) &&
     isValidRegisterPassword(password) &&
     password === confirmPassword;
@@ -172,12 +175,27 @@ export function LearnerLoginCard({
       )}
       {isRegister && (
         <p className="mt-1 text-sm font-semibold text-muted-foreground">
-          请设置登录账号与密码，注册成功后即可开始学习
+          请填写姓名并设置登录账号与密码
         </p>
       )}
 
       {isRegister ? (
         <div className="mt-5 space-y-4">
+          <div>
+            <FieldLabel>姓名 *</FieldLabel>
+            <input
+              type="text"
+              value={realName}
+              onChange={(e) => {
+                setRealName(e.target.value);
+                setRegisterError(null);
+              }}
+              placeholder="如：小明"
+              autoComplete="name"
+              maxLength={20}
+              className="mt-1 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
+            />
+          </div>
           <div>
             <FieldLabel>账号 *</FieldLabel>
             <input
@@ -231,7 +249,7 @@ export function LearnerLoginCard({
             size={isGate ? "lg" : "default"}
             disabled={!canRegister || auth.loading}
             onClick={() =>
-              void auth.registerWithPassword(username, password).then((result) => {
+              void auth.registerWithPassword(username, password, realName).then((result) => {
                 if (result.ok) {
                   handleSuccess();
                   return;
@@ -357,7 +375,7 @@ export function LearnerLoginCard({
       <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm font-bold">
         {isRegister ? (
           <>
-            <span className="text-muted-foreground">注册需设置账号与密码</span>
+            <span className="text-muted-foreground">注册需填写姓名、账号与密码</span>
             <Link href="/profile" className="text-foreground hover:text-primary hover:underline">
               已有账号，去登录
             </Link>
