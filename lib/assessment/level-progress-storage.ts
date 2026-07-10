@@ -1,12 +1,6 @@
 import type { CEFRLevel, LevelTestProgress, LevelTestRecord } from "@/lib/types/assessment";
-import type { LearningCompletionResult } from "@/lib/types/learning-gate";
 import { updateProfile } from "@/lib/points/storage";
 import { getLevelIndex } from "@/lib/assessment/course-access";
-import {
-  afterLearningCompletion,
-  notifyLearningBlocked,
-  precheckLearningCompletion,
-} from "@/lib/hr/hr-registration";
 import { CEFR_LEVELS } from "@/lib/types/course";
 
 const STORAGE_KEY = "cefr-level-tests";
@@ -26,18 +20,9 @@ export function loadLevelTestProgress(): LevelTestProgress {
 export function saveLevelTestResult(
   level: CEFRLevel,
   record: LevelTestRecord
-): LearningCompletionResult<LevelTestProgress> {
+): LevelTestProgress {
   const progress = loadLevelTestProgress();
   const prev = progress[level];
-  const isRetake = !!prev;
-
-  if (!isRetake) {
-    const block = precheckLearningCompletion();
-    if (block) {
-      notifyLearningBlocked();
-      return { ok: false, block };
-    }
-  }
 
   const next: LevelTestProgress = {
     ...progress,
@@ -50,8 +35,7 @@ export function saveLevelTestResult(
   }
   syncProfileHighestLevel(next);
   notifyAssessmentUpdated();
-  if (!isRetake) afterLearningCompletion();
-  return { ok: true, data: next };
+  return next;
 }
 
 export function getPassedLevelCount(progress: LevelTestProgress): number {
