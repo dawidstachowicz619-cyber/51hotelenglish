@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { isPhoneAuthAvailable } from "@/lib/auth/phone-auth-config";
+import { saveRememberedPhone } from "@/lib/auth/remembered-phone";
 import { toE164Phone } from "@/lib/auth/phone";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { isCloudSyncActive, pullFromCloud } from "@/lib/storage/cloud-sync";
+import { updateProfile } from "@/lib/points/storage";
 
 type PhoneAuthState = {
   loading: boolean;
@@ -24,7 +27,7 @@ export function usePhoneAuth() {
   const [pendingPhone, setPendingPhone] = useState("");
 
   const refresh = useCallback(async () => {
-    if (!isCloudSyncActive()) {
+    if (!isPhoneAuthAvailable()) {
       setState({ loading: false, signedIn: false, phone: null, error: null });
       return;
     }
@@ -52,6 +55,7 @@ export function usePhoneAuth() {
       const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
       if (error) throw error;
       setPendingPhone(phone);
+      saveRememberedPhone(phone);
       setOtpSent(true);
       setState((s) => ({ ...s, loading: false, error: null }));
       return { ok: true as const };
@@ -78,19 +82,23 @@ export function usePhoneAuth() {
         });
         if (error) throw error;
 
-        const linkRes = await fetch("/api/auth/link", {
-          method: "POST",
-          credentials: "include",
-        });
-        if (!linkRes.ok) throw new Error("link_failed");
-
-        await pullFromCloud();
         const loggedInPhone = (pendingPhone || state.phone || "").replace(/\s|-/g, "");
-        if (loggedInPhone) {
-          const { updateProfile } = await import("@/lib/points/storage");
+        const normalizedPhone = loggedInPhone.replace(/^\+86/, "");
+
+        if (isCloudSyncActive()) {
+          const linkRes = await fetch("/api/auth/link", {
+            method: "POST",
+            credentials: "include",
+          });
+          if (!linkRes.ok) throw new Error("link_failed");
+          await pullFromCloud();
+        }
+
+        if (normalizedPhone) {
+          saveRememberedPhone(normalizedPhone);
           updateProfile((p) => ({
             ...p,
-            phone: p.phone || loggedInPhone.replace(/^\+86/, ""),
+            phone: p.phone || normalizedPhone,
           }));
         }
         await refresh();
@@ -108,9 +116,13 @@ export function usePhoneAuth() {
 
   const signOut = useCallback(async () => {
     setState((s) => ({ ...s, loading: true }));
-    await fetch("/api/auth/link", { method: "DELETE", credentials: "include" });
-    const supabase = createSupabaseBrowserClient();
-    await supabase.auth.signOut();
+    if (isCloudSyncActive()) {
+      await fetch("/api/auth/link", { method: "DELETE", credentials: "include" });
+    }
+    if (isPhoneAuthAvailable()) {
+      const supabase = createSupabaseBrowserClient();
+      await supabase.auth.signOut();
+    }
     setOtpSent(false);
     await refresh();
     window.dispatchEvent(new Event("auth-signed-out"));
@@ -125,5 +137,6 @@ export function usePhoneAuth() {
     signOut,
     refresh,
     cloudEnabled: isCloudSyncActive(),
+    phoneAuthAvailable: isPhoneAuthAvailable(),
   };
 }

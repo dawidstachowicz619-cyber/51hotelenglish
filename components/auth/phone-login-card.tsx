@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { LogOut, Phone, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { usePhoneAuth } from "@/hooks/use-phone-auth";
 import { isValidMainlandPhone } from "@/lib/auth/phone";
+import { getRememberedPhone } from "@/lib/auth/remembered-phone";
 import { cn } from "@/lib/utils";
 
 type PhoneLoginCardProps = {
@@ -18,12 +20,21 @@ export function PhoneLoginCard({
   onLoggedIn,
 }: PhoneLoginCardProps) {
   const auth = usePhoneAuth();
-  const [phone, setPhone] = useState("");
+  const router = useRouter();
+  const [phone, setPhone] = useState(() => getRememberedPhone());
   const [code, setCode] = useState("");
 
   const isGate = variant === "gate";
+  const hasRememberedPhone = phone === getRememberedPhone() && phone.length === 11;
 
-  if (!auth.cloudEnabled) {
+  useEffect(() => {
+    if (!auth.signedIn && !auth.otpSent && !phone) {
+      const remembered = getRememberedPhone();
+      if (remembered) setPhone(remembered);
+    }
+  }, [auth.signedIn, auth.otpSent, phone]);
+
+  if (!auth.phoneAuthAvailable) {
     return (
       <div
         className={cn(
@@ -34,9 +45,9 @@ export function PhoneLoginCard({
         <div className="flex items-start gap-3">
           <Phone className="size-6 shrink-0 text-muted-foreground" />
           <div>
-            <h2 className="font-display text-lg text-foreground">手机号登录</h2>
+            <h2 className="font-display text-lg text-foreground">手机号登录暂未配置</h2>
             <p className="mt-1 text-sm font-semibold text-muted-foreground">
-              当前环境未开启云端同步，请直接完善下方档案继续使用。
+              请联系管理员配置 Supabase 短信登录，或稍后再试。
             </p>
           </div>
         </div>
@@ -101,11 +112,11 @@ export function PhoneLoginCard({
         <Phone className="size-6 shrink-0 text-secondary" />
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-lg text-foreground">
-            {isGate ? "手机号登录 / 注册" : "手机号登录"}
+            {isGate ? "手机号登录" : "手机号登录"}
           </h2>
           <p className="mt-1 text-sm font-semibold text-muted-foreground">
             {isGate
-              ? "首次使用请先验证手机号，登录后可同步学习进度并完善档案。"
+              ? "输入手机号并验证，即可登录开始学习。"
               : "登录后可在手机、电脑等多设备同步学习进度"}
           </p>
 
@@ -119,6 +130,11 @@ export function PhoneLoginCard({
                 maxLength={11}
                 className="w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-secondary"
               />
+              {hasRememberedPhone && (
+                <p className="text-xs font-semibold text-muted-foreground">
+                  已填入上次登录的手机号
+                </p>
+              )}
               <Button
                 className="w-full"
                 variant="secondary"
@@ -150,7 +166,10 @@ export function PhoneLoginCard({
                 disabled={code.length < 4 || auth.loading}
                 onClick={() =>
                   void auth.verifyOtp(code).then((result) => {
-                    if (result.ok) onLoggedIn?.();
+                    if (result.ok) {
+                      onLoggedIn?.();
+                      if (isGate) router.push("/");
+                    }
                   })
                 }
               >

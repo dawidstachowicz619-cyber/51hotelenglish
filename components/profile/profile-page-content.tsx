@@ -1,28 +1,36 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Trophy, TrendingUp, Star, History, Building2 } from "lucide-react";
 
 import { PhoneLoginCard } from "@/components/auth/phone-login-card";
 import { UserProfileForm } from "@/components/points/user-profile-form";
 import { ProfileCourseStatsSection } from "@/components/profile/profile-course-stats-section";
-import { usePhoneAuth } from "@/hooks/use-phone-auth";
-import { usePoints } from "@/hooks/use-points";
-import { POINTS_RULES } from "@/lib/points/rules";
+import { useLearnerSession } from "@/hooks/use-learner-session";
+import { maskPhone } from "@/lib/auth/remembered-phone";
 
 export function ProfilePageContent() {
-  const auth = usePhoneAuth();
+  const searchParams = useSearchParams();
+  const isRegister = searchParams.get("register") === "1";
+  const showProfileSetup = searchParams.get("setup") === "1";
+
   const {
-    profile,
-    levelTitle,
-    weeklyRank,
-    alltimeRank,
-    hotelWeeklyRank,
-    hotelAlltimeRank,
-    hasHotel,
-    isProfileComplete,
-    refresh,
-  } = usePoints();
+    auth,
+    points: {
+      profile,
+      levelTitle,
+      weeklyRank,
+      alltimeRank,
+      hotelWeeklyRank,
+      hotelAlltimeRank,
+      hasHotel,
+      isProfileComplete,
+      refresh,
+    },
+    showLoginGate,
+  } = useLearnerSession();
 
   useEffect(() => {
     const onAuthChange = () => refresh();
@@ -34,20 +42,28 @@ export function ProfilePageContent() {
     };
   }, [refresh]);
 
-  if (!profile) return null;
+  if (!profile || auth.loading) {
+    return (
+      <div className="mx-auto max-w-lg px-6 pb-24 pt-32 text-center text-sm font-semibold text-muted-foreground">
+        加载中…
+      </div>
+    );
+  }
 
-  const needsPhoneLogin = auth.cloudEnabled && !auth.signedIn;
-
-  if (needsPhoneLogin) {
+  if (showLoginGate) {
     return (
       <div className="mx-auto max-w-lg px-6 pb-24 pt-24 lg:px-8">
         <div className="text-center">
           <span className="mx-auto flex size-20 items-center justify-center rounded-2xl bg-secondary text-3xl font-extrabold text-white shadow-[0_4px_0_0_var(--secondary-dark)]">
             51
           </span>
-          <h1 className="mt-6 font-display text-3xl text-foreground">欢迎登录</h1>
+          <h1 className="mt-6 font-display text-3xl text-foreground">
+            {isRegister ? "注册账号" : "欢迎登录"}
+          </h1>
           <p className="mt-2 text-sm font-semibold leading-relaxed text-muted-foreground">
-            首次使用请先验证手机号登录，登录后再完善昵称与酒店信息。
+            {isRegister
+              ? "使用手机号验证即可注册，无需填写酒店信息。"
+              : "输入手机号验证码即可登录，无需选择酒店。"}
           </p>
         </div>
 
@@ -58,21 +74,31 @@ export function ProfilePageContent() {
     );
   }
 
+  const displayPhone = auth.phone || profile.phone || "";
+  const displayName = isProfileComplete
+    ? profile.nickname
+    : displayPhone
+      ? maskPhone(displayPhone)
+      : "我的学习";
+  const showStats = isProfileComplete || auth.signedIn;
+
   return (
     <div className="mx-auto max-w-5xl px-6 pb-24 pt-24 lg:px-8">
       <div className="text-center">
         <span className="mx-auto flex size-20 items-center justify-center rounded-2xl bg-primary text-3xl font-extrabold text-white shadow-[0_4px_0_0_var(--primary-dark)]">
-          {(profile.nickname || "学").charAt(0).toUpperCase()}
+          {(profile.nickname || displayPhone || "学").charAt(0).toUpperCase()}
         </span>
-        <h1 className="mt-6 font-display text-3xl text-foreground">
-          {isProfileComplete ? profile.nickname : "学员档案"}
-        </h1>
+        <h1 className="mt-6 font-display text-3xl text-foreground">{displayName}</h1>
         <p className="mt-2 font-semibold text-muted-foreground">
-          {profile.hotel || "登录后请完善昵称与酒店信息"}
+          {isProfileComplete
+            ? profile.hotel
+            : auth.signedIn
+              ? "已登录 · 完善档案后可解锁全部课程"
+              : "填写昵称与所在酒店，与 HR 登记信息一致方可解锁课程"}
         </p>
       </div>
 
-      {isProfileComplete && (
+      {showStats && (
         <>
           <div className="mt-10 grid gap-4 sm:grid-cols-2">
             <div className="card-elevated p-5">
@@ -129,60 +155,72 @@ export function ProfilePageContent() {
               </p>
             )}
           </div>
+
+          <ProfileCourseStatsSection onSeeded={refresh} />
+          {profile.history.length > 0 && (
+            <div className="mt-8 card-elevated p-6">
+              <div className="flex items-center gap-2">
+                <History className="size-5 text-muted-foreground" />
+                <h2 className="font-display text-lg text-foreground">积分记录</h2>
+              </div>
+              <ul className="mt-4 space-y-3">
+                {profile.history.slice(0, 10).map((event) => (
+                  <li
+                    key={event.id}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span className="font-semibold text-muted-foreground">
+                      {event.label}
+                    </span>
+                    <span className="font-extrabold text-primary">
+                      +{event.points}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </>
       )}
 
-      {auth.cloudEnabled && auth.signedIn && (
+      {auth.phoneAuthAvailable && auth.signedIn && isProfileComplete && (
         <div className="mt-10">
           <PhoneLoginCard onLoggedIn={refresh} />
         </div>
       )}
 
-      <div className={auth.cloudEnabled && auth.signedIn ? "mt-6" : "mt-10"}>
-        <UserProfileForm
-          onComplete={refresh}
-          verifiedPhone={auth.signedIn ? auth.phone : null}
-        />
-      </div>
-
-      {isProfileComplete && <ProfileCourseStatsSection onSeeded={refresh} />}
-
-      {profile.history.length > 0 && (
-        <div className="mt-8 card-elevated p-6">
-          <div className="flex items-center gap-2">
-            <History className="size-5 text-muted-foreground" />
-            <h2 className="font-display text-lg text-foreground">积分记录</h2>
-          </div>
-          <ul className="mt-4 space-y-3">
-            {profile.history.slice(0, 10).map((event) => (
-              <li
-                key={event.id}
-                className="flex items-center justify-between text-sm"
-              >
-                <span className="font-semibold text-muted-foreground">
-                  {event.label}
-                </span>
-                <span className="font-extrabold text-primary">+{event.points}</span>
-              </li>
-            ))}
-          </ul>
+      {isProfileComplete && (
+        <div className="mt-6">
+          <UserProfileForm
+            onComplete={refresh}
+            verifiedPhone={auth.signedIn ? auth.phone : null}
+          />
         </div>
       )}
 
-      <div className="mt-6 card-elevated p-6">
-        <h2 className="font-display text-lg text-foreground">积分获取方式</h2>
-        <ul className="mt-4 space-y-2">
-          {Object.values(POINTS_RULES).map((rule) => (
-            <li
-              key={rule.label}
-              className="flex justify-between text-sm font-semibold"
-            >
-              <span className="text-muted-foreground">{rule.label}</span>
-              <span className="text-accent">+{rule.points}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {!isProfileComplete && auth.signedIn && !showProfileSetup && (
+        <div className="mt-8 card-elevated p-6 text-center">
+          <h2 className="font-display text-lg text-foreground">完善档案解锁课程</h2>
+          <p className="mt-2 text-sm font-semibold text-muted-foreground">
+            登录已完成。如需学习课程，请补充昵称与所在酒店信息。
+          </p>
+          <Link
+            href="/profile?setup=1"
+            className="mt-4 inline-flex rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white hover:bg-primary/90"
+          >
+            去完善档案
+          </Link>
+        </div>
+      )}
+
+      {!isProfileComplete && (!auth.signedIn || showProfileSetup) && (
+        <div className="mt-8">
+          <UserProfileForm
+            onComplete={refresh}
+            verifiedPhone={auth.signedIn ? auth.phone : null}
+          />
+        </div>
+      )}
     </div>
   );
 }

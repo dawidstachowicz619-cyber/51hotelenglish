@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { ProfilePageContent } from "@/components/profile/profile-page-content";
 import { Footer } from "@/components/layout/footer";
@@ -14,7 +15,15 @@ export default function ProfilePage() {
     <>
       <Navbar />
       <main className="min-h-screen bg-muted">
-        <ProfilePageContent />
+        <Suspense
+          fallback={
+            <div className="mx-auto max-w-lg px-6 pb-24 pt-32 text-center text-sm font-semibold text-muted-foreground">
+              加载中…
+            </div>
+          }
+        >
+          <ProfilePageContent />
+        </Suspense>
       </main>
       <Footer />
     </>

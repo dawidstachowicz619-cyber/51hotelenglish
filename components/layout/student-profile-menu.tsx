@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { usePhoneAuth } from "@/hooks/use-phone-auth";
 import { usePoints } from "@/hooks/use-points";
+import { maskPhone } from "@/lib/auth/remembered-phone";
 import { resetLearnerSession } from "@/lib/points/storage";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +27,7 @@ function isLearnerAuthenticated(
   auth: ReturnType<typeof usePhoneAuth>,
   isProfileComplete: boolean
 ): boolean {
-  return auth.cloudEnabled ? auth.signedIn : isProfileComplete;
+  return auth.phoneAuthAvailable ? auth.signedIn : isProfileComplete;
 }
 
 function LearnerAuthButtons({ className }: { className?: string }) {
@@ -68,7 +69,7 @@ export function StudentProfileMenu() {
     setSigningOut(true);
     setOpen(false);
     try {
-      if (auth.cloudEnabled && auth.signedIn) {
+      if (auth.phoneAuthAvailable && auth.signedIn) {
         await auth.signOut();
       }
       resetLearnerSession();
@@ -104,8 +105,12 @@ export function StudentProfileMenu() {
     return <LearnerAuthButtons />;
   }
 
-  const displayName = isProfileComplete ? profile.nickname : "新学员";
-  const displayHotel = profile.hotel || "完善档案";
+  const displayName = isProfileComplete
+    ? profile.nickname
+    : auth.signedIn && (auth.phone || profile.phone)
+      ? maskPhone(auth.phone || profile.phone || "")
+      : "新学员";
+  const displayHotel = profile.hotel || (auth.signedIn ? "已登录" : "完善档案");
 
   return (
     <div className="relative" ref={ref}>
@@ -232,7 +237,7 @@ export function StudentProfileMenu() {
           {!isProfileComplete && auth.signedIn && (
             <div className="border-t-2 border-border p-3">
               <Button size="sm" className="w-full" asChild>
-                <Link href="/profile" onClick={() => setOpen(false)}>
+                <Link href="/profile?setup=1" onClick={() => setOpen(false)}>
                   完善个人信息
                 </Link>
               </Button>
@@ -265,7 +270,7 @@ export function StudentProfileMobileCard({
     setSigningOut(true);
     onNavigate?.();
     try {
-      if (auth.cloudEnabled && auth.signedIn) {
+      if (auth.phoneAuthAvailable && auth.signedIn) {
         await auth.signOut();
       }
       resetLearnerSession();
@@ -307,10 +312,14 @@ export function StudentProfileMobileCard({
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-bold text-foreground">
-            {isProfileComplete ? profile.nickname : "新学员"}
+            {isProfileComplete
+              ? profile.nickname
+              : auth.signedIn && (auth.phone || profile.phone)
+                ? maskPhone(auth.phone || profile.phone || "")
+                : "新学员"}
           </p>
           <p className="truncate text-xs font-semibold text-muted-foreground">
-            {profile.hotel || "未设置酒店"} · {profile.totalPoints} 积分
+            {profile.hotel || (auth.signedIn ? "已登录" : "未设置酒店")} · {profile.totalPoints} 积分
             {hasHotel && ` · 酒店 #${hotelWeeklyRank}`}
           </p>
         </div>

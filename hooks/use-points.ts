@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { isPhoneAuthAvailable } from "@/lib/auth/phone-auth-config";
 import {
   addPoints,
   claimDailyBonus,
@@ -9,6 +10,7 @@ import {
   loadProfile,
   setUserInfo,
 } from "@/lib/points/storage";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { tryLinkHrRegistration } from "@/lib/hr/hr-registration";
 import type { PointsAction, UserPointsProfile } from "@/lib/types/points";
 import { getLevelTitle } from "@/lib/points/rules";
@@ -21,19 +23,41 @@ export function usePoints() {
     setProfile(loadProfile());
   }, []);
 
+  const maybeClaimDailyBonus = useCallback(async () => {
+    const current = loadProfile();
+    let mayClaim = Boolean(current.nickname?.trim());
+
+    if (isPhoneAuthAvailable()) {
+      const supabase = createSupabaseBrowserClient();
+      const { data } = await supabase.auth.getUser();
+      mayClaim = !!data.user;
+    }
+
+    if (mayClaim) {
+      claimDailyBonus();
+      refresh();
+    }
+  }, [refresh]);
+
   useEffect(() => {
     refresh();
-    claimDailyBonus();
-    refresh();
+    void maybeClaimDailyBonus();
 
     const onUpdate = () => refresh();
+    const onAuthChange = () => {
+      void maybeClaimDailyBonus();
+    };
     window.addEventListener("points-updated", onUpdate);
     window.addEventListener("storage", onUpdate);
+    window.addEventListener("auth-linked", onAuthChange);
+    window.addEventListener("auth-signed-out", onUpdate);
     return () => {
       window.removeEventListener("points-updated", onUpdate);
       window.removeEventListener("storage", onUpdate);
+      window.removeEventListener("auth-linked", onAuthChange);
+      window.removeEventListener("auth-signed-out", onUpdate);
     };
-  }, [refresh]);
+  }, [refresh, maybeClaimDailyBonus]);
 
   const earn = useCallback(
     (
