@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
 import { ArrowRight, Languages } from "lucide-react";
 
 import { HotelRussianPhraseGrid } from "@/components/home/hotel-russian-phrase-grid";
-import { Button } from "@/components/ui/button";
+import {
+  CourseAccessButton,
+  HrCourseLockBanner,
+} from "@/components/learning/hr-course-lock";
 import { getRussianCourseStats } from "@/lib/data/hotel-russian-course";
 
 export function HotelRussianSection() {
@@ -38,25 +39,21 @@ export function HotelRussianSection() {
           <HotelRussianPhraseGrid />
         </div>
 
+        <HrCourseLockBanner className="mx-auto mt-8 max-w-md" />
+
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button size="lg" asChild className="bg-[#0039A6] hover:bg-[#002d85]">
-            <Link href="/courses/russian">
-              进入场景课程
-              <ArrowRight className="size-5" />
-            </Link>
-          </Button>
-          <Button size="lg" variant="outline" asChild>
-            <Link href="/courses/russian/room-items">
-              客房物品 100
-              <ArrowRight className="size-5" />
-            </Link>
-          </Button>
-          <Button size="lg" variant="outline" asChild>
-            <Link href="/courses/russian/dining-items">
-              餐饮物品 100
-              <ArrowRight className="size-5" />
-            </Link>
-          </Button>
+          <CourseAccessButton size="lg" href="/courses/russian" className="bg-[#0039A6] hover:bg-[#002d85]">
+            进入场景课程
+            <ArrowRight className="size-5" />
+          </CourseAccessButton>
+          <CourseAccessButton size="lg" variant="outline" href="/courses/russian/room-items">
+            客房物品 100
+            <ArrowRight className="size-5" />
+          </CourseAccessButton>
+          <CourseAccessButton size="lg" variant="outline" href="/courses/russian/dining-items">
+            餐饮物品 100
+            <ArrowRight className="size-5" />
+          </CourseAccessButton>
           <p className="text-center text-xs font-semibold text-muted-foreground">
             单词 → 句子 → 对话 → 看中文选俄语
           </p>

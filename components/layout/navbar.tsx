@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Building2, Menu, Shield, Sprout, X } from "lucide-react";
+import { Menu, Sprout, X } from "lucide-react";
 
 import {
   StudentProfileMenu,
@@ -69,21 +69,6 @@ export function Navbar() {
             <Sprout className="size-4" strokeWidth={2.25} />
             Grow in Hotel
           </Link>
-          <Link
-            href="/admin/hr"
-            className="inline-flex items-center gap-1.5 rounded-xl border-2 border-border bg-white px-3 py-2 text-xs font-extrabold text-muted-foreground transition-colors hover:border-secondary/40 hover:bg-secondary/5 hover:text-secondary"
-          >
-            <Building2 className="size-4" strokeWidth={2.25} />
-            企业管理员
-          </Link>
-          <Link
-            href="/admin/platform"
-            className="inline-flex items-center gap-1.5 rounded-xl border-2 border-border bg-white px-3 py-2 text-xs font-extrabold text-muted-foreground transition-colors hover:border-accent/40 hover:bg-accent/5 hover:text-accent"
-            title="平台超级管理员"
-          >
-            <Shield className="size-4" strokeWidth={2.25} />
-            平台管理
-          </Link>
           <StudentProfileMenu />
         </div>
 
@@ -94,13 +79,6 @@ export function Navbar() {
             aria-label="Grow in Hotel"
           >
             <Sprout className="size-5" strokeWidth={2.25} />
-          </Link>
-          <Link
-            href="/admin/hr"
-            className="flex size-10 items-center justify-center rounded-xl border-2 border-border text-muted-foreground transition-colors hover:border-secondary/40 hover:bg-secondary/5 hover:text-secondary"
-            aria-label="企业管理员登录"
-          >
-            <Building2 className="size-5" strokeWidth={2.25} />
           </Link>
           <StudentProfileMenu />
           <button
@@ -125,22 +103,6 @@ export function Navbar() {
             >
               <Sprout className="size-4" strokeWidth={2.25} />
               Grow in Hotel · 人才成长
-            </Link>
-            <Link
-              href="/admin/hr"
-              className="mb-3 flex items-center gap-2 rounded-xl border-2 border-border bg-muted/40 px-4 py-3 text-sm font-extrabold text-foreground"
-              onClick={() => setMobileOpen(false)}
-            >
-              <Building2 className="size-4 text-secondary" strokeWidth={2.25} />
-              企业管理员登录
-            </Link>
-            <Link
-              href="/admin/platform"
-              className="mb-3 flex items-center gap-2 rounded-xl border-2 border-border bg-muted/40 px-4 py-3 text-sm font-extrabold text-foreground"
-              onClick={() => setMobileOpen(false)}
-            >
-              <Shield className="size-4 text-accent" strokeWidth={2.25} />
-              平台超级管理员
             </Link>
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => (

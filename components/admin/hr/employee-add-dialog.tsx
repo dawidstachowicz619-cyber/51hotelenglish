@@ -17,6 +17,8 @@ type EmployeeAddDialogProps = {
   onAdded: () => void;
 };
 
+type EmployeeKind = "new" | "veteran";
+
 export function EmployeeAddDialog({
   hotel,
   open,
@@ -30,6 +32,7 @@ export function EmployeeAddDialog({
   const [department, setDepartment] = useState<EmployeeDepartment>(
     departments[0]?.id ?? "reception"
   );
+  const [employeeKind, setEmployeeKind] = useState<EmployeeKind>("new");
   const [hireDate, setHireDate] = useState(() =>
     new Date().toISOString().slice(0, 10)
   );
@@ -40,6 +43,7 @@ export function EmployeeAddDialog({
     if (open) {
       const depts = getHotelDepartments(hotel);
       setDepartment(depts[0]?.id ?? "reception");
+      setEmployeeKind("new");
     }
   }, [open, hotel]);
 
@@ -50,6 +54,7 @@ export function EmployeeAddDialog({
     setPosition("");
     setPhone("");
     setDepartment(departments[0]?.id ?? "reception");
+    setEmployeeKind("new");
     setHireDate(new Date().toISOString().slice(0, 10));
     setError(null);
   };
@@ -65,9 +70,15 @@ export function EmployeeAddDialog({
     setError(null);
 
     const normalizedPhone = phone.trim().replace(/\s|-/g, "").replace(/^\+86/, "");
-    const hireIso = new Date(hireDate).toISOString();
-    const probationEnd = new Date(hireDate);
-    probationEnd.setDate(probationEnd.getDate() + PROBATION_DAYS_DEFAULT);
+    const isNewEmployee = employeeKind === "new";
+    const hireIso = isNewEmployee ? new Date(hireDate).toISOString() : undefined;
+    const probationEnd = isNewEmployee
+      ? (() => {
+          const d = new Date(hireDate);
+          d.setDate(d.getDate() + PROBATION_DAYS_DEFAULT);
+          return d.toISOString();
+        })()
+      : undefined;
 
     const record: EmployeeLearningRecord = {
       id: `import-${normalizedPhone}`,
@@ -86,8 +97,8 @@ export function EmployeeAddDialog({
       courseProgressPercent: 0,
       lastActiveAt: new Date().toISOString(),
       hireDate: hireIso,
-      probationEndDate: probationEnd.toISOString(),
-      status: "new",
+      probationEndDate: probationEnd,
+      status: isNewEmployee ? "new" : "active",
       isImported: true,
     };
 
@@ -125,6 +136,35 @@ export function EmployeeAddDialog({
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <Field label="员工类型">
+            <div className="flex gap-2">
+              {(
+                [
+                  ["new", "新员工"],
+                  ["veteran", "老员工"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setEmployeeKind(value)}
+                  className={`flex-1 rounded-xl border-2 px-3 py-2.5 text-sm font-extrabold transition-colors ${
+                    employeeKind === value
+                      ? "border-secondary bg-secondary/10 text-secondary"
+                      : "border-border bg-white text-muted-foreground hover:border-secondary/30"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[10px] font-semibold text-muted-foreground">
+              {employeeKind === "new"
+                ? "新员工需填写入职日期，系统按 90 天试用期生成学习档案"
+                : "老员工无需入职日期，直接按在岗员工管理"}
+            </p>
+          </Field>
+
           <Field label="部门">
             <select
               value={department}
@@ -174,18 +214,20 @@ export function EmployeeAddDialog({
             />
           </Field>
 
-          <Field label="入职日期">
-            <input
-              type="date"
-              value={hireDate}
-              onChange={(e) => setHireDate(e.target.value)}
-              className="w-full rounded-xl border-2 border-border px-3 py-2.5 text-sm font-semibold outline-none focus:border-secondary"
-              required
-            />
-            <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
-              试用期默认 {PROBATION_DAYS_DEFAULT} 天，到期可打印学习档案
-            </p>
-          </Field>
+          {employeeKind === "new" && (
+            <Field label="入职日期">
+              <input
+                type="date"
+                value={hireDate}
+                onChange={(e) => setHireDate(e.target.value)}
+                className="w-full rounded-xl border-2 border-border px-3 py-2.5 text-sm font-semibold outline-none focus:border-secondary"
+                required
+              />
+              <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
+                试用期默认 {PROBATION_DAYS_DEFAULT} 天，到期可打印学习档案
+              </p>
+            </Field>
+          )}
 
           {error && (
             <p className="rounded-xl bg-red/10 px-3 py-2 text-sm font-bold text-red">

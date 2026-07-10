@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   BookOpen,
@@ -12,7 +11,11 @@ import {
 } from "lucide-react";
 
 import { HrTrainingLesson } from "@/components/grow-in-hotel/hr-training-lesson";
-import { Button } from "@/components/ui/button";
+import {
+  CourseAccessButton,
+  HrCourseLockBanner,
+  useHrCourseAccess,
+} from "@/components/learning/hr-course-lock";
 import {
   catalogCourseToTrainingModule,
   getAssignedCatalogCoursesForEmployee,
@@ -33,6 +36,7 @@ import { cn } from "@/lib/utils";
 type AssignedCatalogCoursesProps = {
   hotel: string;
   department: EmployeeDepartment;
+  employeeId: string;
 };
 
 function linkCourseCompleted(courseId: string): boolean {
@@ -62,17 +66,18 @@ function markLinkCourseVisited(courseId: string): void {
 export function AssignedCatalogCourses({
   hotel,
   department,
+  employeeId,
 }: AssignedCatalogCoursesProps) {
   const [items, setItems] = useState(() =>
-    getAssignedCatalogCoursesForEmployee(hotel, department)
+    getAssignedCatalogCoursesForEmployee(hotel, department, employeeId)
   );
   const [activeModule, setActiveModule] = useState<HrTrainingModule | null>(null);
   const [, tick] = useState(0);
 
   const refresh = useCallback(() => {
-    setItems(getAssignedCatalogCoursesForEmployee(hotel, department));
+    setItems(getAssignedCatalogCoursesForEmployee(hotel, department, employeeId));
     tick((n) => n + 1);
-  }, [hotel, department]);
+  }, [hotel, department, employeeId]);
 
   useEffect(() => {
     refresh();
@@ -117,6 +122,8 @@ export function AssignedCatalogCourses({
         </div>
       </div>
 
+      <HrCourseLockBanner className="mb-4" />
+
       <div className="grid gap-4 sm:grid-cols-2">
         {items.map(({ course, assignment }) => (
           <CourseCard
@@ -143,6 +150,7 @@ function CourseCard({
   hotel: string;
   onStartTraining: (mod: HrTrainingModule) => void;
 }) {
+  const { canLearn, requestAccess } = useHrCourseAccess();
   const linkDelivery =
     course.delivery.type === "link" ? course.delivery : null;
   const isLink = linkDelivery !== null;
@@ -188,27 +196,33 @@ function CourseCard({
       </p>
 
       {linkDelivery ? (
-        <Button className="mt-4 w-full" variant={done ? "outline" : "default"} asChild>
-          <Link
-            href={linkDelivery.href}
-            onClick={() => markLinkCourseVisited(course.id)}
-          >
-            <BookOpen className="size-4" />
-            {linkDelivery.linkLabel}
-          </Link>
-        </Button>
-      ) : (
-        <Button
-          className="mt-4 w-full"
+        <CourseAccessButton
+          href={linkDelivery.href}
+          fullWidth
           variant={done ? "outline" : "default"}
+          onClick={() => markLinkCourseVisited(course.id)}
+          className="mt-4"
+        >
+          <BookOpen className="size-4" />
+          {linkDelivery.linkLabel}
+        </CourseAccessButton>
+      ) : (
+        <CourseAccessButton
+          fullWidth
+          variant={done ? "outline" : "default"}
+          className="mt-4"
           onClick={() => {
+            if (!canLearn) {
+              requestAccess();
+              return;
+            }
             const mod = catalogCourseToTrainingModule(course, hotel);
             if (mod) onStartTraining(mod);
           }}
         >
           <Play className="size-4" />
           {done ? "重新学习" : "开始学习"}
-        </Button>
+        </CourseAccessButton>
       )}
     </div>
   );

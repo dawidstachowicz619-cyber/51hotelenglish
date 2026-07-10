@@ -281,6 +281,7 @@ export function GrowInHotelPageContent() {
             department={
               employee.department === "other" ? "reception" : employee.department
             }
+            employeeId={employee.id}
           />
         </section>
 

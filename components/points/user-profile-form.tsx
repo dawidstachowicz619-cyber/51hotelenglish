@@ -89,7 +89,7 @@ export function UserProfileForm({ onComplete }: UserProfileFormProps) {
             ))}
           </select>
           <p className="mt-1.5 text-[10px] font-semibold text-muted-foreground">
-            酒店由系统管理员录入；新用户可先选「试用酒店」体验 1 课。
+            酒店由系统管理员录入；请填写与 HR 登记一致的手机号，由企业 HR 后台开通账号。
           </p>
         </div>
         <div>
@@ -112,7 +112,7 @@ export function UserProfileForm({ onComplete }: UserProfileFormProps) {
             <p className="mt-1 text-xs font-bold text-red">{phoneError}</p>
           )}
           <p className="mt-1.5 text-[10px] font-semibold text-muted-foreground">
-            未在 HR 后台注册前，仅可体验 1 课；注册后自动解锁全部课程。
+            未在 HR 后台注册前无法学习课程；注册后自动解锁全部内容。
           </p>
         </div>
       </div>

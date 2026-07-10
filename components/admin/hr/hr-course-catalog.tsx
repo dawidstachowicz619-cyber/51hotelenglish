@@ -20,13 +20,16 @@ import {
   assignCatalogCourse,
   getHotelCourseAssignments,
   isCatalogCourseAssigned,
+  resolveAssignMode,
   unassignCatalogCourse,
 } from "@/lib/hr/course-assignment-storage";
 import { getDepartmentLabel, getHotelDepartments } from "@/lib/hr/hotel-department-storage";
-import type { EmployeeDepartment } from "@/lib/types/hr-admin";
+import type { EmployeeDepartment, EmployeeLearningRecord } from "@/lib/types/hr-admin";
 import {
   CATALOG_CATEGORY_LABELS,
   type CatalogCategory,
+  type CourseAssignMode,
+  type HotelCourseAssignment,
 } from "@/lib/types/course-catalog";
 import {
   ASK_SHORT,
@@ -36,14 +39,39 @@ import { cn } from "@/lib/utils";
 
 type HrCourseCatalogProps = {
   hotel: string;
+  employees: EmployeeLearningRecord[];
 };
 
-export function HrCourseCatalog({ hotel }: HrCourseCatalogProps) {
+function assignmentSummary(
+  hotel: string,
+  assignment: HotelCourseAssignment,
+  employees: EmployeeLearningRecord[]
+): string {
+  const mode = resolveAssignMode(assignment);
+  if (mode === "all") return "全员";
+  if (mode === "department") {
+    return getDepartmentLabel(hotel, assignment.department as EmployeeDepartment);
+  }
+  const ids = assignment.employeeIds ?? [];
+  const names = ids
+    .map((id) => employees.find((e) => e.id === id)?.nickname)
+    .filter(Boolean) as string[];
+  if (names.length === 0) return `指定 ${ids.length} 人`;
+  if (names.length <= 2) return names.join("、");
+  return `${names.slice(0, 2).join("、")} 等 ${names.length} 人`;
+}
+
+export function HrCourseCatalog({ hotel, employees }: HrCourseCatalogProps) {
   const [assignments, setAssignments] = useState(() => getHotelCourseAssignments(hotel));
   const [departments, setDepartments] = useState(() => getHotelDepartments(hotel));
   const [category, setCategory] = useState<CatalogCategory | "all">("all");
   const [assignTarget, setAssignTarget] = useState<string | null>(null);
-  const [assignDept, setAssignDept] = useState<EmployeeDepartment | "all">("all");
+  const [assignMode, setAssignMode] = useState<CourseAssignMode>("all");
+  const [assignDept, setAssignDept] = useState<EmployeeDepartment>(
+    () => getHotelDepartments(hotel)[0]?.id ?? "reception"
+  );
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     setAssignments(getHotelCourseAssignments(hotel));
@@ -73,10 +101,48 @@ export function HrCourseCatalog({ hotel }: HrCourseCatalogProps) {
     []
   );
 
+  const openAssign = (courseId: string) => {
+    setAssignError(null);
+    setAssignTarget(courseId);
+    const existing = assignments.find((a) => a.catalogCourseId === courseId);
+    if (existing) {
+      const mode = resolveAssignMode(existing);
+      setAssignMode(mode);
+      if (mode === "department" && existing.department !== "all") {
+        setAssignDept(existing.department);
+      }
+      if (mode === "employees") {
+        setSelectedEmployeeIds(existing.employeeIds ?? []);
+      } else {
+        setSelectedEmployeeIds([]);
+      }
+    } else {
+      setAssignMode("all");
+      setAssignDept(departments[0]?.id ?? "reception");
+      setSelectedEmployeeIds([]);
+    }
+  };
+
   const handleAssign = (courseId: string) => {
-    assignCatalogCourse(hotel, courseId, assignDept, true);
+    setAssignError(null);
+    const result = assignCatalogCourse(hotel, courseId, {
+      assignMode,
+      department: assignMode === "department" ? assignDept : undefined,
+      employeeIds: assignMode === "employees" ? selectedEmployeeIds : undefined,
+      required: true,
+    });
+    if (!result.ok) {
+      setAssignError(result.error);
+      return;
+    }
     setAssignTarget(null);
     refresh();
+  };
+
+  const toggleEmployee = (id: string) => {
+    setSelectedEmployeeIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
   const handleUnassign = (courseId: string) => {
@@ -94,7 +160,7 @@ export function HrCourseCatalog({ hotel }: HrCourseCatalogProps) {
         <div>
           <h2 className="font-display text-xl text-foreground">通用课程资源中心</h2>
           <p className="mt-1 text-sm font-semibold text-muted-foreground">
-            从平台课程库选择课程分配给本酒店员工，员工可在 Grow in Hotel 学习
+            从平台课程库选择课程，可分配给全员、部门或指定员工
           </p>
         </div>
       </div>
@@ -118,9 +184,7 @@ export function HrCourseCatalog({ hotel }: HrCourseCatalogProps) {
                       {course.title}
                     </p>
                     <p className="text-[10px] font-semibold text-muted-foreground">
-                      {a.department === "all"
-                        ? "全员"
-                        : getDepartmentLabel(hotel, a.department)}
+                      {assignmentSummary(hotel, a, employees)}
                       {" · "}
                       {LEARNING_PHASE_LABELS[course.phase]}
                     </p>
@@ -204,19 +268,92 @@ export function HrCourseCatalog({ hotel }: HrCourseCatalogProps) {
               {isAssigning ? (
                 <div className="mt-3 space-y-2">
                   <select
-                    value={assignDept}
-                    onChange={(e) =>
-                      setAssignDept(e.target.value as EmployeeDepartment | "all")
-                    }
+                    value={assignMode}
+                    onChange={(e) => {
+                      setAssignMode(e.target.value as CourseAssignMode);
+                      setAssignError(null);
+                    }}
                     className="w-full rounded-lg border-2 border-border px-2 py-1.5 text-xs font-bold"
                   >
                     <option value="all">全员 / 全部岗位</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
+                    <option value="department">按部门</option>
+                    <option value="employees">指定员工</option>
                   </select>
+
+                  {assignMode === "department" && (
+                    <select
+                      value={assignDept}
+                      onChange={(e) =>
+                        setAssignDept(e.target.value as EmployeeDepartment)
+                      }
+                      className="w-full rounded-lg border-2 border-border px-2 py-1.5 text-xs font-bold"
+                    >
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  {assignMode === "employees" && (
+                    <div className="max-h-40 overflow-y-auto rounded-lg border-2 border-border bg-white p-2">
+                      {employees.length === 0 ? (
+                        <p className="px-2 py-3 text-xs font-semibold text-muted-foreground">
+                          暂无员工，请先在上方添加或导入员工
+                        </p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {employees.map((emp) => (
+                            <li key={emp.id}>
+                              <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted/60">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedEmployeeIds.includes(emp.id)}
+                                  onChange={() => toggleEmployee(emp.id)}
+                                  className="size-4 rounded border-border"
+                                />
+                                <span className="min-w-0 flex-1 text-xs font-bold text-foreground">
+                                  {emp.nickname}
+                                  <span className="ml-1 font-normal text-muted-foreground">
+                                    · {getDepartmentLabel(hotel, emp.department)} · {emp.phone}
+                                  </span>
+                                </span>
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {employees.length > 0 && (
+                        <div className="mt-2 flex gap-2 border-t border-border pt-2">
+                          <button
+                            type="button"
+                            className="text-[10px] font-extrabold text-primary hover:underline"
+                            onClick={() =>
+                              setSelectedEmployeeIds(employees.map((e) => e.id))
+                            }
+                          >
+                            全选
+                          </button>
+                          <button
+                            type="button"
+                            className="text-[10px] font-extrabold text-muted-foreground hover:underline"
+                            onClick={() => setSelectedEmployeeIds([])}
+                          >
+                            清空
+                          </button>
+                          <span className="ml-auto text-[10px] font-semibold text-muted-foreground">
+                            已选 {selectedEmployeeIds.length} 人
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {assignError && (
+                    <p className="text-xs font-bold text-red">{assignError}</p>
+                  )}
+
                   <div className="flex gap-2">
                     <Button size="sm" className="flex-1" onClick={() => handleAssign(course.id)}>
                       确认分配
@@ -224,7 +361,10 @@ export function HrCourseCatalog({ hotel }: HrCourseCatalogProps) {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setAssignTarget(null)}
+                      onClick={() => {
+                        setAssignTarget(null);
+                        setAssignError(null);
+                      }}
                     >
                       取消
                     </Button>
@@ -235,10 +375,7 @@ export function HrCourseCatalog({ hotel }: HrCourseCatalogProps) {
                   size="sm"
                   variant={assigned ? "outline" : "secondary"}
                   className="mt-3 w-full"
-                  onClick={() => {
-                    setAssignTarget(course.id);
-                    setAssignDept("all");
-                  }}
+                  onClick={() => openAssign(course.id)}
                 >
                   {assigned ? (
                     <>

@@ -12,6 +12,9 @@ import { CourseLevelPicker } from "@/components/courses/course-level-picker";
 import { DepartmentPicker } from "@/components/courses/front-desk/department-picker";
 import { LevelExerciseFlow } from "@/components/courses/front-desk/level-exercise-flow";
 import { ProgressionMap } from "@/components/courses/front-desk/progression-map";
+import {
+  HrCourseLockBanner,
+} from "@/components/learning/hr-course-lock";
 import { Button } from "@/components/ui/button";
 import { useAssessmentAccess } from "@/hooks/use-assessment-access";
 import { useCourseProgress } from "@/hooks/use-course-progress";
@@ -24,7 +27,6 @@ import {
 import { TRIAL_CEFR_LEVEL } from "@/lib/assessment/course-access";
 import {
   canStartNewLearning,
-  getTrialLessonsRemaining,
   isHrRegisteredUser,
   notifyLearningBlocked,
 } from "@/lib/hr/hr-registration";
@@ -115,6 +117,10 @@ export function FrontDeskCourse() {
     : null;
 
   const handleSelectDepartment = (dept: FrontDeskDepartment) => {
+    if (!canStartNewLearning()) {
+      notifyLearningBlocked();
+      return;
+    }
     setDepartment(dept);
     setActiveNode(null);
   };
@@ -170,21 +176,7 @@ export function FrontDeskCourse() {
         </Link>
 
         {!isHrRegisteredUser() && (
-          <div className="mt-6 rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 text-center">
-            <p className="text-sm font-extrabold text-amber-900">
-              {getTrialLessonsRemaining() > 0
-                ? `体验模式：还可免费学习 ${getTrialLessonsRemaining()} 课`
-                : "体验课已用完，请联系酒店 HR 后台注册后继续学习"}
-            </p>
-            <p className="mt-1 text-xs font-semibold text-amber-800/80">
-              未注册学员仅可体验 1 课；HR 注册后可学习全部前厅英语课程
-            </p>
-            {getTrialLessonsRemaining() === 0 && (
-              <Button className="mt-3" variant="secondary" size="sm" asChild>
-                <Link href="/profile">完善个人档案</Link>
-              </Button>
-            )}
-          </div>
+          <HrCourseLockBanner className="mt-6" />
         )}
 
         {!hasAssessment && (

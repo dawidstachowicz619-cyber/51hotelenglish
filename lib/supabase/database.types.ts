@@ -177,6 +177,7 @@ export type Database = {
           username: string;
           password_hash: string;
           display_name: string;
+          phone: string | null;
           email: string | null;
           enabled: boolean;
           created_at: string;
@@ -188,6 +189,7 @@ export type Database = {
           username: string;
           password_hash: string;
           display_name: string;
+          phone?: string | null;
           email?: string | null;
           enabled?: boolean;
           created_at?: string;

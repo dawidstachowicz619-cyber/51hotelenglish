@@ -215,7 +215,7 @@ export function HrAdminDashboard() {
 
       {canCatalog ? (
         <div className="mt-6">
-          <HrCourseCatalog hotel={hotel} />
+          <HrCourseCatalog hotel={hotel} employees={employees} />
         </div>
       ) : null}
 

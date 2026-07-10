@@ -5,6 +5,7 @@ export type HrAdminAccount = {
   /** 演示环境明文存储；生产环境应使用服务端哈希 */
   password: string;
   displayName: string;
+  phone?: string;
   email?: string;
   enabled: boolean;
   createdAt: string;
@@ -18,5 +19,15 @@ export type CreateHrAdminAccountInput = {
   username: string;
   password: string;
   displayName: string;
+  phone?: string;
   email?: string;
+};
+
+export type UpdateHrAdminAccountInput = {
+  username?: string;
+  displayName?: string;
+  phone?: string;
+  email?: string;
+  password?: string;
+  enabled?: boolean;
 };

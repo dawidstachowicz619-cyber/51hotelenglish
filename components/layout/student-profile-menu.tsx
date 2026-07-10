@@ -1,16 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ClipboardCheck,
+  LogOut,
   Trophy,
   User,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { usePhoneAuth } from "@/hooks/use-phone-auth";
 import { usePoints } from "@/hooks/use-points";
+import { resetLearnerSession } from "@/lib/points/storage";
 import { cn } from "@/lib/utils";
 
 function getInitial(nickname: string): string {
@@ -27,8 +31,26 @@ export function StudentProfileMenu() {
     hasHotel,
     isProfileComplete,
   } = usePoints();
+  const auth = usePhoneAuth();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    setOpen(false);
+    try {
+      if (auth.cloudEnabled && auth.signedIn) {
+        await auth.signOut();
+      }
+      resetLearnerSession();
+      router.push("/profile");
+      router.refresh();
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -154,6 +176,15 @@ export function StudentProfileMenu() {
               <ClipboardCheck className="size-4 text-secondary" />
               水平测评
             </Link>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-foreground hover:bg-muted disabled:opacity-60"
+              onClick={() => void handleSignOut()}
+              disabled={signingOut}
+            >
+              <LogOut className="size-4 text-muted-foreground" />
+              {signingOut ? "退出中…" : "退出登录"}
+            </button>
           </div>
 
           {!isProfileComplete && (
@@ -184,6 +215,24 @@ export function StudentProfileMobileCard({
     hasHotel,
     isProfileComplete,
   } = usePoints();
+  const auth = usePhoneAuth();
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    onNavigate?.();
+    try {
+      if (auth.cloudEnabled && auth.signedIn) {
+        await auth.signOut();
+      }
+      resetLearnerSession();
+      router.push("/profile");
+      router.refresh();
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   if (!profile) return null;
 
@@ -219,6 +268,15 @@ export function StudentProfileMobileCard({
           排名 #{weeklyRank}
         </Link>
       </div>
+      <button
+        type="button"
+        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-2 text-xs font-extrabold text-muted-foreground disabled:opacity-60"
+        onClick={() => void handleSignOut()}
+        disabled={signingOut}
+      >
+        <LogOut className="size-3.5" />
+        {signingOut ? "退出中…" : "退出登录"}
+      </button>
       {isProfileComplete && (
         <p className="mt-2 text-center text-[10px] font-bold text-muted-foreground">
           {levelTitle} · CEFR {profile.cefrLevel}

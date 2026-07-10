@@ -5,12 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, ClipboardCheck, ConciergeBell, Languages } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  CourseAccessButton,
+  HrCourseLockBanner,
+} from "@/components/learning/hr-course-lock";
 import { useAssessmentAccess } from "@/hooks/use-assessment-access";
 import { TRIAL_CEFR_LEVEL } from "@/lib/assessment/course-access";
-import {
-  getTrialLessonsRemaining,
-  isHrRegisteredUser,
-} from "@/lib/hr/hr-registration";
+import { isHrRegisteredUser } from "@/lib/hr/hr-registration";
 import { CEFR_LABELS } from "@/lib/types/course";
 import { getFrontDeskStats } from "@/lib/data/front-desk";
 import { getRussianCourseStats } from "@/lib/data/hotel-russian-course";
@@ -22,11 +23,9 @@ export function CoursesPageContent() {
   const { ready, maxLevel, hasAssessment, accessibleLevels } =
     useAssessmentAccess();
   const [hrRegistered, setHrRegistered] = useState(true);
-  const [trialRemaining, setTrialRemaining] = useState(0);
 
   const refreshHrAccess = useCallback(() => {
     setHrRegistered(isHrRegisteredUser());
-    setTrialRemaining(getTrialLessonsRemaining());
   }, []);
 
   useEffect(() => {
@@ -56,13 +55,8 @@ export function CoursesPageContent() {
         </p>
 
         {ready && !hrRegistered && (
-          <div className="mx-auto mt-6 max-w-lg rounded-2xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
-            {trialRemaining > 0
-              ? `未注册学员可免费体验 ${trialRemaining} 课（前厅英语、CEFR 测评等）。如需继续学习，请联系酒店 HR 在后台注册。`
-              : "体验课已用完。前厅英语、CEFR 测评等课程需联系酒店 HR 后台注册后继续学习。"}
-            <Link href="/profile" className="ml-2 text-primary underline">
-              填写手机号
-            </Link>
+          <div className="mx-auto mt-6 max-w-lg">
+            <HrCourseLockBanner />
           </div>
         )}
 
@@ -75,7 +69,7 @@ export function CoursesPageContent() {
           </p>
         )}
 
-        {ready && !hasAssessment && (
+        {ready && !hasAssessment && hrRegistered && (
           <div className="mx-auto mt-6 max-w-md rounded-2xl border-2 border-secondary/30 bg-secondary/10 p-5">
             <ClipboardCheck className="mx-auto size-8 text-secondary" />
             <p className="mt-2 text-sm font-extrabold text-foreground">
@@ -100,11 +94,11 @@ export function CoursesPageContent() {
       <div className="mt-12 grid gap-5">
         <article className="card-elevated bg-primary-light/30 p-6 transition-all hover:-translate-y-0.5 hover:shadow-md md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex gap-5">
+            <div className="flex min-w-0 flex-1 gap-5">
               <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_4px_0_0_rgba(0,0,0,0.15)]">
                 <ConciergeBell className="size-7" strokeWidth={2} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-bold text-muted-foreground">
                   Front Desk
                 </p>
@@ -121,22 +115,26 @@ export function CoursesPageContent() {
               </div>
             </div>
 
-            <Button asChild variant={hasAssessment ? "default" : "secondary"}>
-              <Link href="/courses/front-desk">
-                {hasAssessment ? "进入学习" : `试学进入 (${TRIAL_CEFR_LEVEL})`}
+            <div className="w-full shrink-0 md:w-auto">
+              <CourseAccessButton
+                href="/courses/front-desk"
+                variant={hasAssessment ? "default" : "secondary"}
+                fullWidth
+              >
+                {hasAssessment ? "进入学习" : `开始学习 (${TRIAL_CEFR_LEVEL})`}
                 <ArrowRight className="size-4" />
-              </Link>
-            </Button>
+              </CourseAccessButton>
+            </div>
           </div>
         </article>
 
         <article className="card-elevated border-[#0039A6]/15 bg-[#0039A6]/5 p-6 transition-all hover:-translate-y-0.5 hover:shadow-md md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex gap-5">
+            <div className="flex min-w-0 flex-1 gap-5">
               <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#0039A6] text-white shadow-[0_4px_0_0_rgba(0,57,166,0.35)]">
                 <Languages className="size-7" strokeWidth={2} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-bold text-muted-foreground">
                   Hotel Russian · CN → RU
                 </p>
@@ -153,19 +151,17 @@ export function CoursesPageContent() {
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-              <Button asChild className="bg-[#0039A6] hover:bg-[#002d85]">
-                <Link href="/courses/russian">
-                  场景课程
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="border-[#D52B1E]/40 text-[#B91C1C]">
-                <Link href="/courses/russian/room-items">客房物品 100</Link>
-              </Button>
-              <Button asChild variant="outline" className="border-[#0039A6]/40 text-[#0039A6]">
-                <Link href="/courses/russian/dining-items">餐饮物品 100</Link>
-              </Button>
+            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+              <CourseAccessButton href="/courses/russian" className="bg-[#0039A6] hover:bg-[#002d85]">
+                场景课程
+                <ArrowRight className="size-4" />
+              </CourseAccessButton>
+              <CourseAccessButton href="/courses/russian/room-items" variant="outline" className="border-[#D52B1E]/40 text-[#B91C1C]">
+                客房物品 100
+              </CourseAccessButton>
+              <CourseAccessButton href="/courses/russian/dining-items" variant="outline" className="border-[#0039A6]/40 text-[#0039A6]">
+                餐饮物品 100
+              </CourseAccessButton>
             </div>
           </div>
         </article>

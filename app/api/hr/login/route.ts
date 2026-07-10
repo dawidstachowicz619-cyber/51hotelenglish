@@ -68,6 +68,7 @@ export async function PUT(request: Request) {
       username: string;
       password: string;
       displayName: string;
+      phone?: string;
       email?: string;
     };
 
@@ -77,6 +78,7 @@ export async function PUT(request: Request) {
       username: body.username,
       passwordHash: hashPassword(body.password),
       displayName: body.displayName,
+      phone: body.phone,
       email: body.email,
     });
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   BedDouble,
   CalendarCheck,
@@ -14,7 +13,12 @@ import {
 } from "lucide-react";
 
 import { RussianScenarioDetail } from "@/components/courses/russian/russian-scenario-detail";
-import { Button } from "@/components/ui/button";
+import {
+  CourseAccessButton,
+  guardCourseAction,
+  HrCourseLockBanner,
+  useHrCourseAccess,
+} from "@/components/learning/hr-course-lock";
 import {
   getRussianCourseStats,
   HOTEL_RUSSIAN_SCENARIOS,
@@ -32,6 +36,7 @@ const ICONS = {
 
 export function HotelRussianCourse() {
   const [activeScenario, setActiveScenario] = useState<RussianScenario | null>(null);
+  const { canLearn, requestAccess } = useHrCourseAccess();
   const stats = getRussianCourseStats();
   const { record, todayComplete } = useRussianDailyCheckIn();
   const roomCampaign = useRussianCampaignProgress("room");
@@ -59,6 +64,8 @@ export function HotelRussianCourse() {
         </p>
       </div>
 
+      <HrCourseLockBanner className="mt-4" />
+
       <div className="mt-6 space-y-4">
       <article className="card-elevated overflow-hidden border-2 border-[#0039A6]/30 bg-gradient-to-br from-[#0039A6]/15 via-white to-[#D52B1E]/10">
         <div className="flex flex-col gap-4 p-4">
@@ -77,9 +84,9 @@ export function HotelRussianCourse() {
               </p>
             </div>
           </div>
-          <Button asChild className="h-11 w-full bg-gradient-to-r from-[#0039A6] to-[#D52B1E]">
-            <Link href="/courses/russian/campaign">开始闯关</Link>
-          </Button>
+          <CourseAccessButton href="/courses/russian/campaign" fullWidth className="h-11 bg-gradient-to-r from-[#0039A6] to-[#D52B1E]">
+            开始闯关
+          </CourseAccessButton>
         </div>
       </article>
 
@@ -102,11 +109,9 @@ export function HotelRussianCourse() {
               )}
             </div>
           </div>
-          <Button asChild className="h-11 w-full bg-[#0039A6]">
-            <Link href="/courses/russian/daily">
-              {todayComplete ? "查看打卡" : "开始今日打卡"}
-            </Link>
-          </Button>
+          <CourseAccessButton href="/courses/russian/daily" fullWidth className="h-11 bg-[#0039A6]">
+            {todayComplete ? "查看打卡" : "开始今日打卡"}
+          </CourseAccessButton>
         </div>
       </article>
 
@@ -122,9 +127,9 @@ export function HotelRussianCourse() {
               <p className="mt-1 text-xs font-semibold text-muted-foreground">10 大类图卡 + 练习</p>
             </div>
           </div>
-          <Button asChild className="h-11 w-full bg-[#D52B1E]">
-            <Link href="/courses/russian/room-items">进入学习</Link>
-          </Button>
+          <CourseAccessButton href="/courses/russian/room-items" fullWidth className="h-11 bg-[#D52B1E]">
+            进入学习
+          </CourseAccessButton>
         </div>
       </article>
 
@@ -140,9 +145,9 @@ export function HotelRussianCourse() {
               <p className="mt-1 text-xs font-semibold text-muted-foreground">餐具杯具 · 图卡 + 练习</p>
             </div>
           </div>
-          <Button asChild className="h-11 w-full bg-[#0039A6]">
-            <Link href="/courses/russian/dining-items">进入学习</Link>
-          </Button>
+          <CourseAccessButton href="/courses/russian/dining-items" fullWidth className="h-11 bg-[#0039A6]">
+            进入学习
+          </CourseAccessButton>
         </div>
       </article>
       </div>
@@ -183,12 +188,16 @@ export function HotelRussianCourse() {
                   </span>
                 ))}
               </div>
-              <Button
-                className="mt-4 h-11 w-full bg-[#0039A6]"
-                onClick={() => setActiveScenario(scenario)}
+              <CourseAccessButton
+                fullWidth
+                className="mt-4 h-11 bg-[#0039A6]"
+                onClick={() => {
+                  if (!guardCourseAction(canLearn, requestAccess)) return;
+                  setActiveScenario(scenario);
+                }}
               >
                 开始学习
-              </Button>
+              </CourseAccessButton>
             </article>
           );
         })}

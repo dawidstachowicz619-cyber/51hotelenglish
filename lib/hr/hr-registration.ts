@@ -97,10 +97,7 @@ function incrementTrialLessonsUsed(): void {
 
 export function precheckLearningCompletion(): LearningCompletionBlock | null {
   if (isHrRegisteredUser()) return null;
-  if (getTrialLessonsUsed() >= TRIAL_LESSON_LIMIT) {
-    return "hr_registration_required";
-  }
-  return null;
+  return "hr_registration_required";
 }
 
 export function notifyLearningBlocked(): void {
@@ -109,9 +106,7 @@ export function notifyLearningBlocked(): void {
 }
 
 export function afterLearningCompletion(): void {
-  if (!isHrRegisteredUser()) {
-    incrementTrialLessonsUsed();
-  }
+  // 未注册学员不可完成课程学习，不再计入体验课
 }
 
 export function canStartNewLearning(): boolean {

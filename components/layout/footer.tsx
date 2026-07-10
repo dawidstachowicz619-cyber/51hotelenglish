@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Building2, Shield } from "lucide-react";
 
 const footerLinks = {
   product: [
@@ -12,7 +13,6 @@ const footerLinks = {
     { href: "/about", label: "关于我们" },
     { href: "/about#contact", label: "联系我们" },
     { href: "/about#partners", label: "企业合作" },
-    { href: "/admin/hr", label: "HR 管理后台" },
   ],
 };
 
@@ -76,7 +76,29 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 border-t-2 border-border pt-6">
+        <div className="mt-12 border-t-2 border-border pt-8">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/admin/hr"
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-border bg-white px-5 py-2.5 text-sm font-extrabold text-muted-foreground transition-colors hover:border-secondary/40 hover:bg-secondary/5 hover:text-secondary"
+              >
+                <Building2 className="size-4" strokeWidth={2.25} />
+                企业管理员
+              </Link>
+              <Link
+                href="/admin/platform"
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-border bg-white px-5 py-2.5 text-sm font-extrabold text-muted-foreground transition-colors hover:border-accent/40 hover:bg-accent/5 hover:text-accent"
+                title="平台超级管理员"
+              >
+                <Shield className="size-4" strokeWidth={2.25} />
+                平台管理
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 border-t-2 border-border pt-6">
           <div className="flex flex-col items-center justify-between gap-3 text-sm text-muted-foreground sm:flex-row">
             <p className="font-semibold">
               © {new Date().getFullYear()} 51HotelEnglish

@@ -65,6 +65,16 @@ export function updateProfile(
   return updated;
 }
 
+export function resetLearnerSession(): UserPointsProfile {
+  const profile = createDefaultProfile();
+  saveProfile(profile);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("points-updated", { detail: profile }));
+    window.dispatchEvent(new Event("hr-registration-updated"));
+  }
+  return profile;
+}
+
 export function setUserInfo(
   nickname: string,
   hotel: string,

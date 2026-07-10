@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, Home } from "lucide-react";
 
+import { HrCourseLockBanner, HrCourseLockOverlay } from "@/components/learning/hr-course-lock";
 import { cn } from "@/lib/utils";
 
 type RussianMobileShellProps = {
@@ -49,7 +50,8 @@ export function RussianMobileShell({ children }: RussianMobileShellProps) {
       </header>
 
       <main className="mx-auto w-full max-w-lg px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4">
-        {children}
+        <HrCourseLockBanner className="mb-4" />
+        <HrCourseLockOverlay>{children}</HrCourseLockOverlay>
       </main>
     </div>
   );

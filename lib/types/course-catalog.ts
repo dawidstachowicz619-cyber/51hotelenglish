@@ -7,6 +7,7 @@ export type CatalogCategory =
   | "onboarding"
   | "general"
   | "english"
+  | "russian"
   | "compliance";
 
 export const CATALOG_CATEGORY_LABELS: Record<CatalogCategory, string> = {
@@ -14,6 +15,7 @@ export const CATALOG_CATEGORY_LABELS: Record<CatalogCategory, string> = {
   onboarding: "入职培训",
   general: "通用技能",
   english: "英语能力",
+  russian: "俄语能力",
   compliance: "合规安全",
 };
 
@@ -42,9 +44,15 @@ export type CatalogCourse = {
   tags?: string[];
 };
 
+export type CourseAssignMode = "all" | "department" | "employees";
+
 export type HotelCourseAssignment = {
   catalogCourseId: string;
   department: EmployeeDepartment | "all";
+  /** 分配方式；旧数据无此字段时按 department / employeeIds 推断 */
+  assignMode?: CourseAssignMode;
+  /** assignMode=employees 时生效 */
+  employeeIds?: string[];
   assignedAt: string;
   required: boolean;
 };

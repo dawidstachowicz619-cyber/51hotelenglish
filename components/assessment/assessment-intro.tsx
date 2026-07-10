@@ -11,6 +11,14 @@ import {
 } from "lucide-react";
 
 import {
+  HR_COURSE_LOCK_HINT,
+} from "@/lib/types/learning-gate";
+import {
+  CourseAccessButton,
+  HrCourseLockBanner,
+  useHrCourseAccess,
+} from "@/components/learning/hr-course-lock";
+import {
   ASSESSMENT_LEVELS,
   PASS_THRESHOLD,
   QUESTIONS_PER_LEVEL,
@@ -32,6 +40,7 @@ const questionTypes = Object.values(QUESTION_TYPE_LABELS);
 
 export function AssessmentIntro({ onSelectLevel }: AssessmentIntroProps) {
   const [progress, setProgress] = useState<LevelTestProgress>({});
+  const { canLearn, requestAccess } = useHrCourseAccess();
 
   useEffect(() => {
     setProgress(loadLevelTestProgress());
@@ -97,6 +106,7 @@ export function AssessmentIntro({ onSelectLevel }: AssessmentIntroProps) {
       </div>
 
       <div className="mt-8 space-y-3 text-left">
+        {!canLearn && <HrCourseLockBanner className="mb-4" />}
         <p className="text-center text-sm font-extrabold text-foreground">
           选择要挑战的级别
         </p>
@@ -104,21 +114,29 @@ export function AssessmentIntro({ onSelectLevel }: AssessmentIntroProps) {
           const info = CEFR_LEVEL_INFO[level];
           const record = progress[level];
           const passed = record?.passed ?? false;
+          const lockedByHr = !canLearn && !record;
 
           return (
             <button
               key={level}
               type="button"
-              onClick={() => onSelectLevel(level)}
+              onClick={() => {
+                if (lockedByHr) {
+                  requestAccess();
+                  return;
+                }
+                onSelectLevel(level);
+              }}
               className={cn(
                 "flex w-full items-center gap-4 rounded-2xl border-2 border-b-4 px-5 py-4 text-left transition-all hover:bg-muted/50 active:translate-y-0.5 active:border-b-2",
-                passed ? "border-primary/40 bg-primary-light/20" : "border-border bg-white"
+                passed ? "border-primary/40 bg-primary-light/20" : "border-border bg-white",
+                lockedByHr && "border-dashed border-amber-400/70 bg-amber-50/80"
               )}
             >
               <div
                 className={cn(
                   "flex size-12 shrink-0 items-center justify-center rounded-xl font-display text-lg text-white",
-                  getLevelColor(level)
+                  lockedByHr ? "bg-amber-600" : getLevelColor(level)
                 )}
               >
                 {level}
@@ -129,9 +147,16 @@ export function AssessmentIntro({ onSelectLevel }: AssessmentIntroProps) {
                   {QUESTIONS_PER_LEVEL} 题 · {PASS_THRESHOLD} 分通关
                   {record ? ` · 最高 ${record.score} 分` : ""}
                 </p>
+                {lockedByHr && (
+                  <p className="mt-1 text-xs font-bold text-amber-900">
+                    {HR_COURSE_LOCK_HINT}
+                  </p>
+                )}
               </div>
               {passed ? (
                 <CheckCircle2 className="size-6 shrink-0 text-primary" />
+              ) : lockedByHr ? (
+                <Lock className="size-6 shrink-0 text-amber-700" />
               ) : (
                 <Lock className="size-6 shrink-0 text-muted-foreground/40" />
               )}

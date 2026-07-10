@@ -1,5 +1,9 @@
-import { isCloudSyncActive } from "@/lib/storage/cloud-sync";
-import type { HotelHrPermissions, HrPermissionKey } from "@/lib/types/hr-permissions";
+import {
+  createHrAdminAccount,
+  deleteHrAdminAccount,
+  getHrAccountsByHotel,
+  updateHrAdminAccount,
+} from "@/lib/hr/hr-admin-accounts";
 import {
   getAllHotelHrPermissions,
   getHotelHrPermissions,
@@ -14,6 +18,13 @@ import {
   getAllManagedHotels,
   registerHotel,
 } from "@/lib/hr/hotel-registry";
+import { isCloudSyncActive } from "@/lib/storage/cloud-sync";
+import type {
+  CreateHrAdminAccountInput,
+  HrAdminAccount,
+  UpdateHrAdminAccountInput,
+} from "@/lib/types/hr-admin-account";
+import type { HotelHrPermissions, HrPermissionKey } from "@/lib/types/hr-permissions";
 
 function platformPassword(): string | null {
   if (typeof window === "undefined") return null;
@@ -127,6 +138,71 @@ export async function checkHrPermission(
   const config = (await fetchHotelPermissionsList([hotel]))[0];
   if (!config?.enabled) return false;
   return config.permissions[permission] ?? true;
+}
+
+export async function fetchHotelHrAccounts(hotel: string): Promise<HrAdminAccount[]> {
+  if (!isCloudSyncActive()) return getHrAccountsByHotel(hotel);
+
+  const res = await fetch(
+    `/api/platform/hr-accounts?hotel=${encodeURIComponent(hotel)}`,
+    { headers: platformHeaders() }
+  );
+  if (!res.ok) return getHrAccountsByHotel(hotel);
+  const data = (await res.json()) as { accounts: HrAdminAccount[] };
+  return data.accounts;
+}
+
+export async function cloudCreateHrAdminAccount(
+  input: CreateHrAdminAccountInput
+): Promise<{ account: HrAdminAccount } | { error: string }> {
+  if (!isCloudSyncActive()) return createHrAdminAccount(input);
+
+  const res = await fetch("/api/platform/hr-accounts", {
+    method: "POST",
+    headers: { ...platformHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const data = (await res.json()) as { account?: HrAdminAccount; error?: string };
+  if (!res.ok) return { error: data.error ?? "创建失败" };
+  if (!data.account) return { error: "创建失败" };
+  window.dispatchEvent(new Event("hr-admin-accounts-updated"));
+  return { account: data.account };
+}
+
+export async function cloudUpdateHrAdminAccount(
+  id: string,
+  patch: UpdateHrAdminAccountInput
+): Promise<{ account: HrAdminAccount } | { error: string }> {
+  if (!isCloudSyncActive()) return updateHrAdminAccount(id, patch);
+
+  const res = await fetch("/api/platform/hr-accounts", {
+    method: "PATCH",
+    headers: { ...platformHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ id, ...patch }),
+  });
+  const data = (await res.json()) as { account?: HrAdminAccount; error?: string };
+  if (!res.ok) return { error: data.error ?? "保存失败" };
+  if (!data.account) return { error: "保存失败" };
+  window.dispatchEvent(new Event("hr-admin-accounts-updated"));
+  return { account: data.account };
+}
+
+export async function cloudDeleteHrAdminAccount(
+  id: string
+): Promise<{ ok: true } | { error: string }> {
+  if (!isCloudSyncActive()) {
+    deleteHrAdminAccount(id);
+    return { ok: true };
+  }
+
+  const res = await fetch(`/api/platform/hr-accounts?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: platformHeaders(),
+  });
+  const data = (await res.json()) as { error?: string };
+  if (!res.ok) return { error: data.error ?? "删除失败" };
+  window.dispatchEvent(new Event("hr-admin-accounts-updated"));
+  return { ok: true };
 }
 
 // Re-export local setters for non-cloud fallback used by platform dashboard

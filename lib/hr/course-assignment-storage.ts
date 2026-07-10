@@ -3,11 +3,19 @@ import type { EmployeeDepartment } from "@/lib/types/hr-admin";
 import type { HrTrainingModule } from "@/lib/types/hr-training";
 import type {
   CatalogCourse,
+  CourseAssignMode,
   HotelCourseAssignment,
 } from "@/lib/types/course-catalog";
 import { HOTEL_COURSE_ASSIGNMENTS_KEY } from "@/lib/types/course-catalog";
 
 type AssignmentStore = Record<string, HotelCourseAssignment[]>;
+
+export type AssignCatalogCourseOptions = {
+  assignMode: CourseAssignMode;
+  department?: EmployeeDepartment;
+  employeeIds?: string[];
+  required?: boolean;
+};
 
 function loadStore(): AssignmentStore {
   if (typeof window === "undefined") return {};
@@ -25,6 +33,26 @@ function saveStore(store: AssignmentStore): void {
   window.dispatchEvent(new Event("hotel-course-assignments-updated"));
 }
 
+export function resolveAssignMode(assignment: HotelCourseAssignment): CourseAssignMode {
+  if (assignment.assignMode) return assignment.assignMode;
+  if (assignment.employeeIds?.length) return "employees";
+  if (assignment.department === "all") return "all";
+  return "department";
+}
+
+export function assignmentMatchesEmployee(
+  assignment: HotelCourseAssignment,
+  department: EmployeeDepartment,
+  employeeId: string
+): boolean {
+  const mode = resolveAssignMode(assignment);
+  if (mode === "employees") {
+    return (assignment.employeeIds ?? []).includes(employeeId);
+  }
+  if (mode === "all") return true;
+  return assignment.department === department;
+}
+
 export function getHotelCourseAssignments(hotel: string): HotelCourseAssignment[] {
   const key = hotel.trim();
   return (loadStore()[key] ?? []).sort(
@@ -35,19 +63,36 @@ export function getHotelCourseAssignments(hotel: string): HotelCourseAssignment[
 export function assignCatalogCourse(
   hotel: string,
   catalogCourseId: string,
-  department: EmployeeDepartment | "all",
-  required = true
-): void {
+  options: AssignCatalogCourseOptions
+): { ok: true } | { ok: false; error: string } {
+  const { assignMode, department, employeeIds, required = true } = options;
+
+  if (assignMode === "employees" && !employeeIds?.length) {
+    return { ok: false, error: "请至少选择一名员工" };
+  }
+  if (assignMode === "department" && !department) {
+    return { ok: false, error: "请选择部门" };
+  }
+
   const key = hotel.trim();
   const store = loadStore();
   const list = store[key] ?? [];
   const existing = list.findIndex((a) => a.catalogCourseId === catalogCourseId);
+
   const entry: HotelCourseAssignment = {
     catalogCourseId,
-    department,
+    assignMode,
+    department:
+      assignMode === "all"
+        ? "all"
+        : assignMode === "department"
+          ? department!
+          : "all",
+    employeeIds: assignMode === "employees" ? employeeIds : undefined,
     assignedAt: new Date().toISOString(),
     required,
   };
+
   if (existing >= 0) {
     list[existing] = entry;
   } else {
@@ -55,6 +100,7 @@ export function assignCatalogCourse(
   }
   store[key] = list;
   saveStore(store);
+  return { ok: true };
 }
 
 export function unassignCatalogCourse(hotel: string, catalogCourseId: string): void {
@@ -72,10 +118,11 @@ export function isCatalogCourseAssigned(hotel: string, catalogCourseId: string):
 
 export function getAssignedCatalogCoursesForEmployee(
   hotel: string,
-  department: EmployeeDepartment
+  department: EmployeeDepartment,
+  employeeId: string
 ): { assignment: HotelCourseAssignment; course: CatalogCourse }[] {
   return getHotelCourseAssignments(hotel)
-    .filter((a) => a.department === "all" || a.department === department)
+    .filter((a) => assignmentMatchesEmployee(a, department, employeeId))
     .map((assignment) => {
       const course = getCatalogCourseById(assignment.catalogCourseId);
       return course ? { assignment, course } : null;

@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { ArrowRight, Languages } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import {
+  CourseAccessButton,
+  HrCourseLockBanner,
+} from "@/components/learning/hr-course-lock";
 import { getRussianCourseStats } from "@/lib/data/hotel-russian-course";
 import { useRussianDailyCheckIn } from "@/hooks/use-russian-daily-checkin";
 
@@ -42,28 +45,24 @@ export function RussianHeroSection() {
             手机打开即可学，微信、Safari 均可用，每天 15 分钟自信接待俄罗斯宾客。
           </p>
 
+          <HrCourseLockBanner className="mx-auto mt-6 max-w-md" />
+
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button size="lg" asChild className="bg-gradient-to-r from-[#0039A6] to-[#D52B1E] hover:opacity-90">
-              <Link href="/courses/russian/campaign">
-                闯关学习 · 5句+5词
-                <ArrowRight className="size-5" />
-              </Link>
-            </Button>
-            <Button size="lg" asChild className="bg-[#D52B1E] hover:bg-[#B91C1C]">
-              <Link href="/courses/russian/daily">
-                {todayComplete ? "查看今日打卡" : "每日打卡"}
-                <ArrowRight className="size-5" />
-              </Link>
-            </Button>
-            <Button size="lg" asChild className="bg-[#0039A6] hover:bg-[#002d85]">
-              <Link href="/courses/russian">
-                场景课程
-                <ArrowRight className="size-5" />
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild className="border-[#D52B1E]/40 text-[#B91C1C]">
-              <Link href="/courses/russian/room-items">客房 & 餐饮 200 词</Link>
-            </Button>
+            <CourseAccessButton size="lg" href="/courses/russian/campaign" className="bg-gradient-to-r from-[#0039A6] to-[#D52B1E] hover:opacity-90">
+              闯关学习 · 5句+5词
+              <ArrowRight className="size-5" />
+            </CourseAccessButton>
+            <CourseAccessButton size="lg" href="/courses/russian/daily" className="bg-[#D52B1E] hover:bg-[#B91C1C]">
+              {todayComplete ? "查看今日打卡" : "每日打卡"}
+              <ArrowRight className="size-5" />
+            </CourseAccessButton>
+            <CourseAccessButton size="lg" href="/courses/russian" className="bg-[#0039A6] hover:bg-[#002d85]">
+              场景课程
+              <ArrowRight className="size-5" />
+            </CourseAccessButton>
+            <CourseAccessButton size="lg" variant="outline" href="/courses/russian/room-items" className="border-[#D52B1E]/40 text-[#B91C1C]">
+              客房 & 餐饮 200 词
+            </CourseAccessButton>
           </div>
           <p className="mt-4 text-sm font-semibold text-muted-foreground">
             {record ? (
