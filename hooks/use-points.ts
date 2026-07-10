@@ -9,6 +9,7 @@ import {
   loadProfile,
   setUserInfo,
 } from "@/lib/points/storage";
+import { tryLinkHrRegistration } from "@/lib/hr/hr-registration";
 import type { PointsAction, UserPointsProfile } from "@/lib/types/points";
 import { getLevelTitle } from "@/lib/points/rules";
 import { getHotelRank, getUserRank } from "@/lib/points/leaderboard";
@@ -47,8 +48,9 @@ export function usePoints() {
   );
 
   const saveUserInfo = useCallback(
-    (nickname: string, hotel: string) => {
-      setUserInfo(nickname, hotel);
+    (nickname: string, hotel: string, phone?: string) => {
+      setUserInfo(nickname, hotel, phone);
+      tryLinkHrRegistration();
       refresh();
     },
     [refresh]

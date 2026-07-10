@@ -136,11 +136,12 @@ export function HrTrainingLesson({
     } else {
       const score = Math.round((correctCount / module.questions.length) * 100);
       if (!preview) {
-        completeTrainingModule(module.id, score, {
+        const result = completeTrainingModule(module.id, score, {
           title: module.title,
           phase: module.phase,
           ask: module.ask,
         });
+        if (!result.ok) return;
       }
       setStep("done");
     }

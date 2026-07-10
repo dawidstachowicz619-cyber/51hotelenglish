@@ -1,6 +1,5 @@
 import {
   BedDouble,
-  Bot,
   ConciergeBell,
   Languages,
   UtensilsCrossed,
@@ -52,24 +51,11 @@ const features = [
     title: "酒店俄语",
     subtitle: "CN · RU · EN",
     description:
-      "通过中文学俄语：单词、常用句、情景对话与场景练习，中俄英三语对照，接待 Russian guests 更自信。",
+      "通过中文学俄语：单词、常用句、情景对话与场景练习，手机 H5 学习，微信与 Safari 均可使用。",
     href: "/courses/russian",
     color: "bg-[#0039A6]",
     borderColor: "border-[#0039A6]/30",
     lightBg: "bg-[#0039A6]/5",
-  },
-  {
-    id: "ai-simulation",
-    icon: Bot,
-    title: "AI 模拟真实客诉",
-    subtitle: "AI Simulation",
-    description:
-      "AI 扮演 demanding guest，模拟 overbooking、noise complaint 等高压场景。",
-    href: "/ai-coach",
-    color: "bg-purple",
-    borderColor: "border-purple/30",
-    lightBg: "bg-purple/10",
-    featured: true,
   },
 ];
 
@@ -82,7 +68,7 @@ export function FeatureSection() {
             学习路径
           </p>
           <h2 className="mt-3 font-display text-3xl text-foreground sm:text-4xl">
-            五大核心模块
+            四大核心模块
           </h2>
           <p className="mt-4 text-base font-semibold text-muted-foreground">
             通关地图式学习，从上往下逐级闯关，A1 到 C1 五段旅程等你征服。
@@ -94,9 +80,7 @@ export function FeatureSection() {
             <article
               key={feature.id}
               id={feature.id}
-              className={`group card-elevated overflow-hidden p-6 transition-all hover:-translate-y-1 hover:shadow-md md:p-8 ${
-                feature.featured ? "md:col-span-2" : ""
-              } ${feature.lightBg}`}
+              className={`group card-elevated overflow-hidden p-6 transition-all hover:-translate-y-1 hover:shadow-md md:p-8 ${feature.lightBg}`}
             >
               <div className="flex h-full flex-col">
                 <div className="flex items-start justify-between">

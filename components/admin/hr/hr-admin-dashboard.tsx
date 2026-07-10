@@ -10,7 +10,6 @@ import { HrDepartmentSettings } from "@/components/admin/hr/hr-department-settin
 import { HrTrainingUpload } from "@/components/admin/hr/hr-training-upload";
 import { DepartmentBreakdown, DepartmentRanking, LevelBreakdown } from "@/components/admin/hr/hr-charts";
 import { EmployeeAddDialog } from "@/components/admin/hr/employee-add-dialog";
-import { EmployeeDetailPanel } from "@/components/admin/hr/employee-detail-panel";
 import { EmployeeImportDialog } from "@/components/admin/hr/employee-import-dialog";
 import { EmployeeTable } from "@/components/admin/hr/employee-table";
 import { HotelStatsCards } from "@/components/admin/hr/hotel-stats-cards";
@@ -18,9 +17,10 @@ import { HrLoginGate } from "@/components/admin/hr/hr-login-gate";
 import { Button } from "@/components/ui/button";
 import { useHrPermissions } from "@/hooks/use-hr-permissions";
 import { computeHotelStats } from "@/lib/hr/hotel-analytics";
+import { hrEmployeeRecordPath } from "@/lib/hr/employee-record-path";
 import { isHotelHrAccessEnabled } from "@/lib/hr/hotel-hr-permissions";
 import { clearHrSession, loadHrSession } from "@/lib/hr/hr-session";
-import { getHotelEmployees, removeHotelEmployee } from "@/lib/hr/roster-storage";
+import { fetchHotelEmployees, cloudRemoveEmployee } from "@/lib/hr/roster-api";
 import { syncCurrentUserToRoster } from "@/lib/hr/sync-employee";
 import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
 import {
@@ -32,14 +32,13 @@ export function HrAdminDashboard() {
   const [hotel, setHotel] = useState<string | null>(null);
   const [hrAdmin, setHrAdmin] = useState<{ displayName: string; username: string } | null>(null);
   const [employees, setEmployees] = useState<EmployeeLearningRecord[]>([]);
-  const [selected, setSelected] = useState<EmployeeLearningRecord | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
   const refresh = useCallback(() => {
     syncCurrentUserToRoster();
     if (!hotel) return;
-    setEmployees(getHotelEmployees(hotel));
+    void fetchHotelEmployees(hotel).then(setEmployees);
   }, [hotel]);
 
   useEffect(() => {
@@ -79,7 +78,7 @@ export function HrAdminDashboard() {
     if (!hotel) return;
     const onPerm = () => {
       if (!isHotelHrAccessEnabled(hotel)) {
-        setSelected(null);
+        /* permissions changed */
       }
     };
     window.addEventListener("hotel-hr-permissions-updated", onPerm);
@@ -90,16 +89,13 @@ export function HrAdminDashboard() {
     clearHrSession();
     setHotel(null);
     setHrAdmin(null);
-    setSelected(null);
   };
 
   const handleDeleteEmployee = (employee: EmployeeLearningRecord) => {
     if (!hotel) return;
     const label = `${employee.nickname}（${employee.role}）`;
     if (!window.confirm(`确定删除员工「${label}」？此操作不可撤销。`)) return;
-    removeHotelEmployee(hotel, employee.id);
-    if (selected?.id === employee.id) setSelected(null);
-    refresh();
+    void cloudRemoveEmployee(hotel, employee.id).then(refresh);
   };
 
   if (!hotel) {
@@ -243,28 +239,20 @@ export function HrAdminDashboard() {
       ) : null}
 
       {canEmployees || canReports ? (
-        <div className="mt-6 grid gap-6 xl:grid-cols-3">
-          <div className={selected ? "xl:col-span-2" : "xl:col-span-3"}>
-            {canEmployees ? (
-              <EmployeeTable
-                hotel={hotel}
-                employees={employees}
-                selectedId={selected?.id ?? null}
-                onSelect={canReports ? setSelected : () => {}}
-                onDelete={handleDeleteEmployee}
-              />
-            ) : (
-              <HrAccessDenied hotel={hotel} reason="permission" permission="employees" />
-            )}
-          </div>
-          {selected && canReports && (
-            <div className="xl:col-span-1">
-              <EmployeeDetailPanel
-                employee={selected}
-                onClose={() => setSelected(null)}
-                onDelete={canEmployees ? () => handleDeleteEmployee(selected) : undefined}
-              />
-            </div>
+        <div className="mt-6">
+          {canEmployees ? (
+            <EmployeeTable
+              hotel={hotel}
+              employees={employees}
+              getEmployeeHref={
+                canReports
+                  ? (emp) => hrEmployeeRecordPath(emp.id)
+                  : undefined
+              }
+              onDelete={handleDeleteEmployee}
+            />
+          ) : (
+            <HrAccessDenied hotel={hotel} reason="permission" permission="employees" />
           )}
         </div>
       ) : null}

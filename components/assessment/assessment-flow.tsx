@@ -15,7 +15,11 @@ import {
   calculateLevelTestResult,
   type LevelTestResult,
 } from "@/lib/assessment/level-scoring";
-import { saveLevelTestResult } from "@/lib/assessment/level-progress-storage";
+import {
+  loadLevelTestProgress,
+  saveLevelTestResult,
+} from "@/lib/assessment/level-progress-storage";
+import { guardLearningStart } from "@/lib/hr/hr-registration";
 import {
   awardAssessmentPoints,
   awardIdentityPoints,
@@ -60,6 +64,8 @@ export function AssessmentFlow() {
   }, []);
 
   const handleSelectLevel = useCallback((level: CEFRLevel) => {
+    const progress = loadLevelTestProgress();
+    if (!progress[level] && !guardLearningStart()) return;
     setSelectedLevel(level);
     resetQuizState();
     setPhase("identity");
@@ -170,13 +176,18 @@ export function AssessmentFlow() {
     setResult(levelResult);
     setPhase("result");
 
-    saveLevelTestResult(selectedLevel, {
+    const saved = saveLevelTestResult(selectedLevel, {
       passed: levelResult.passed,
       score: levelResult.score,
       correct: levelResult.correct,
       total: levelResult.total,
       date: new Date().toISOString(),
     });
+
+    if (!saved.ok) {
+      setPointsEarned(0);
+      return;
+    }
 
     const earned = awardAssessmentPoints(
       levelResult.correct,

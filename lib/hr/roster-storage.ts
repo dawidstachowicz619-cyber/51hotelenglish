@@ -1,4 +1,5 @@
 import { getDemoEmployeesForHotel } from "@/lib/hr/demo-roster";
+import { getAllManagedHotels } from "@/lib/hr/hotel-registry";
 import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
 
 const STORAGE_KEY = "51he-hr-roster";
@@ -89,6 +90,17 @@ export function getHotelEmployees(hotel: string): EmployeeLearningRecord[] {
   const live = store[key] ?? [];
   const hiddenIds = getHiddenIds(key);
   return mergeEmployees(demo, live, hiddenIds);
+}
+
+/** 全平台学员（去重），供平台管理员统计 */
+export function getAllPlatformEmployees(): EmployeeLearningRecord[] {
+  const byId = new Map<string, EmployeeLearningRecord>();
+  for (const hotel of getAllManagedHotels()) {
+    for (const emp of getHotelEmployees(hotel)) {
+      byId.set(emp.id, emp);
+    }
+  }
+  return [...byId.values()];
 }
 
 export function upsertHotelEmployee(

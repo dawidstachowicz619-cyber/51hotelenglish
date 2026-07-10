@@ -5,19 +5,28 @@ import { Building2, KeyRound, LogIn, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { verifyHrAdminLogin } from "@/lib/hr/hr-admin-accounts";
-import { isHotelHrAccessEnabled } from "@/lib/hr/hotel-hr-permissions";
+import { checkHotelHrAccessEnabled } from "@/lib/hr/platform-api";
+import { cloudHrLogin } from "@/lib/hr/roster-api";
 import { saveHrSession } from "@/lib/hr/hr-session";
+import { isCloudSyncActive } from "@/lib/storage/cloud-sync";
+import type { HrAdminSession } from "@/lib/types/hr-admin";
 
 type HrLoginGateProps = {
   onLogin: (hotel: string) => void;
 };
 
+function persistCloudSession(session: HrAdminSession): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem("51he-hr-admin-session", JSON.stringify(session));
+}
+
 export function HrLoginGate({ onLogin }: HrLoginGateProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setError(null);
     const trimmedUser = username.trim();
     if (!trimmedUser || !password) {
@@ -25,19 +34,39 @@ export function HrLoginGate({ onLogin }: HrLoginGateProps) {
       return;
     }
 
-    const account = verifyHrAdminLogin(trimmedUser, password);
-    if (!account) {
-      setError("账号或密码错误，或账号已被禁用");
-      return;
-    }
+    setLoading(true);
+    try {
+      if (isCloudSyncActive()) {
+        const result = await cloudHrLogin(trimmedUser, password);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        if (!(await checkHotelHrAccessEnabled(result.session.hotel))) {
+          setError(`「${result.session.hotel}」的 HR 后台权限尚未开通，请联系平台管理员`);
+          return;
+        }
+        persistCloudSession(result.session);
+        onLogin(result.session.hotel);
+        return;
+      }
 
-    if (!isHotelHrAccessEnabled(account.hotel)) {
-      setError(`「${account.hotel}」的 HR 后台权限尚未开通，请联系平台管理员`);
-      return;
-    }
+      const account = verifyHrAdminLogin(trimmedUser, password);
+      if (!account) {
+        setError("账号或密码错误，或账号已被禁用");
+        return;
+      }
 
-    saveHrSession(account);
-    onLogin(account.hotel);
+      if (!(await checkHotelHrAccessEnabled(account.hotel))) {
+        setError(`「${account.hotel}」的 HR 后台权限尚未开通，请联系平台管理员`);
+        return;
+      }
+
+      saveHrSession(account);
+      onLogin(account.hotel);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,7 +93,7 @@ export function HrLoginGate({ onLogin }: HrLoginGateProps) {
                   setUsername(e.target.value);
                   setError(null);
                 }}
-                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                onKeyDown={(e) => e.key === "Enter" && void handleLogin()}
                 placeholder="平台分配的 HR 账号"
                 autoComplete="username"
                 className="w-full rounded-xl border-2 border-border bg-white py-3 pl-10 pr-4 text-sm font-semibold outline-none focus:border-secondary"
@@ -83,7 +112,7 @@ export function HrLoginGate({ onLogin }: HrLoginGateProps) {
                   setPassword(e.target.value);
                   setError(null);
                 }}
-                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                onKeyDown={(e) => e.key === "Enter" && void handleLogin()}
                 placeholder="请输入密码"
                 autoComplete="current-password"
                 className="w-full rounded-xl border-2 border-border bg-white py-3 pl-10 pr-4 text-sm font-semibold outline-none focus:border-secondary"
@@ -98,9 +127,9 @@ export function HrLoginGate({ onLogin }: HrLoginGateProps) {
           </p>
         )}
 
-        <Button className="mt-6 w-full" size="lg" onClick={handleLogin}>
+        <Button className="mt-6 w-full" size="lg" onClick={() => void handleLogin()} disabled={loading}>
           <LogIn className="size-5" />
-          登录管理后台
+          {loading ? "登录中…" : "登录管理后台"}
         </Button>
 
         <p className="mt-4 text-[10px] font-semibold text-muted-foreground">

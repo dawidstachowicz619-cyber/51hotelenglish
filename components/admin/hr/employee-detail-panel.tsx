@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Printer, Trash2, X } from "lucide-react";
 
 import { ProbationReportDialog } from "@/components/admin/hr/probation-report-dialog";
+import { EmployeeCourseStatsTable } from "@/components/admin/hr/employee-course-stats-table";
 import { Button } from "@/components/ui/button";
 import { getDepartmentLabel } from "@/lib/hr/hotel-department-storage";
 import {
@@ -146,6 +147,8 @@ export function EmployeeDetailPanel({
             打印试用期学习档案
           </Button>
         </section>
+
+        <EmployeeCourseStatsTable employee={employee} />
 
         <div className="mt-4">
           <p className="text-xs font-extrabold text-muted-foreground">

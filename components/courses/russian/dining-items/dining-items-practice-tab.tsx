@@ -10,6 +10,7 @@ import {
   buildDiningItemPracticeQuestions,
   pickRandomDiningItemSubset,
 } from "@/lib/course/dining-item-practice";
+import { logRussianItemsPracticeSession } from "@/lib/course/russian-items-progress-storage";
 import {
   HOTEL_RUSSIAN_DINING_ITEMS,
   getDiningItemById,
@@ -63,6 +64,19 @@ export function DiningItemsPracticeTab() {
     setShowFeedback(false);
     setCorrectCount(0);
     setFinished(false);
+  };
+
+  const finishSession = () => {
+    const score = Math.round((correctCount / questions.length) * 100);
+    const result = logRussianItemsPracticeSession("dining", {
+      score,
+      correctCount,
+      totalCount: questions.length,
+      mode: mode === "image" ? "看图选词" : "看中文选词",
+      itemIds: subset.map((item) => item.id),
+    });
+    if (!result.ok) return;
+    setFinished(true);
   };
 
   if (finished) {
@@ -248,7 +262,7 @@ export function DiningItemsPracticeTab() {
                     setSelected(null);
                     setShowFeedback(false);
                   } else {
-                    setFinished(true);
+                    finishSession();
                   }
                 }}
               >

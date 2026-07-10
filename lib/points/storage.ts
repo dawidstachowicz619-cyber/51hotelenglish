@@ -1,5 +1,6 @@
 import type { UserPointsProfile, PointsEvent, PointsAction } from "@/lib/types/points";
 import { getWeekStartISO, POINTS_RULES } from "@/lib/points/rules";
+import { scheduleCloudPush } from "@/lib/storage/cloud-sync";
 
 const STORAGE_KEY = "51he-points-profile";
 
@@ -59,15 +60,25 @@ export function updateProfile(
   saveProfile(updated);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("points-updated", { detail: updated }));
+    scheduleCloudPush();
   }
   return updated;
 }
 
-export function setUserInfo(nickname: string, hotel: string): UserPointsProfile {
+export function setUserInfo(
+  nickname: string,
+  hotel: string,
+  phone?: string
+): UserPointsProfile {
+  const normalizedPhone = phone?.trim()
+    ? phone.trim().replace(/\s|-/g, "").replace(/^\+86/, "")
+    : "";
+
   return updateProfile((p) => ({
     ...p,
     nickname: nickname.trim(),
     hotel: hotel.trim() || "51HotelEnglish",
+    phone: normalizedPhone || p.phone || "",
   }));
 }
 

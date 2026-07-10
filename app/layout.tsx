@@ -4,6 +4,11 @@ import { Nunito } from "next/font/google";
 import "./globals.css";
 
 import { EmployeeSyncProvider } from "@/components/providers/employee-sync-provider";
+import { CloudSyncProvider } from "@/components/providers/cloud-sync-provider";
+import {
+  HrRegistrationProvider,
+  HrTrialBanner,
+} from "@/components/learning/hr-registration-prompt";
 
 const nunito = Nunito({
   variable: "--font-nunito",
@@ -43,6 +48,9 @@ export default function RootLayout({
     <html lang="zh-CN" className={nunito.variable}>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <EmployeeSyncProvider />
+        <CloudSyncProvider />
+        <HrRegistrationProvider />
+        <HrTrialBanner />
         {children}
       </body>
     </html>

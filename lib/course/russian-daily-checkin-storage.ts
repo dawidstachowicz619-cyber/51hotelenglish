@@ -4,9 +4,15 @@ import {
   isConsecutiveDay,
 } from "@/lib/course/russian-daily-pack";
 import { appendLearningHistory } from "@/lib/hr/learning-history-storage";
+import {
+  afterLearningCompletion,
+  notifyLearningBlocked,
+  precheckLearningCompletion,
+} from "@/lib/hr/hr-registration";
 import { addPoints } from "@/lib/points/storage";
 import { loadProfile } from "@/lib/points/storage";
 import { POINTS_RULES } from "@/lib/points/rules";
+import type { LearningCompletionResult } from "@/lib/types/learning-gate";
 import type {
   DailyPackSource,
   RussianDailyCheckInRecord,
@@ -53,17 +59,26 @@ export function completeRussianDailyCheckIn(
   itemIds: string[],
   source: DailyPackSource,
   date = getTodayDateISO()
-): {
+): LearningCompletionResult<{
   record: RussianDailyCheckInRecord;
   earnedPoints: number;
   streakBonus: number;
-} {
+}> {
   const profile = loadProfile();
   const store = loadAll();
   const current = store[profile.userId] ?? { ...EMPTY };
 
   if (current.sessions[date]?.completed) {
-    return { record: current, earnedPoints: 0, streakBonus: 0 };
+    return {
+      ok: true,
+      data: { record: current, earnedPoints: 0, streakBonus: 0 },
+    };
+  }
+
+  const block = precheckLearningCompletion();
+  if (block) {
+    notifyLearningBlocked();
+    return { ok: false, block };
   }
 
   let streak = 1;
@@ -120,5 +135,9 @@ export function completeRussianDailyCheckIn(
     score,
   });
 
-  return { record: updated, earnedPoints, streakBonus };
+  afterLearningCompletion();
+  return {
+    ok: true,
+    data: { record: updated, earnedPoints, streakBonus },
+  };
 }

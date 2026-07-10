@@ -1,17 +1,5 @@
 import { HotelRussianRoomItemsCourse } from "@/components/courses/russian/room-items/hotel-russian-room-items-course";
-import { Footer } from "@/components/layout/footer";
-import { Navbar } from "@/components/layout/navbar";
 
 export default function HotelRussianRoomItemsPage() {
-  return (
-    <>
-      <Navbar />
-      <main className="bg-gradient-to-b from-[#FFF5F5] to-white pt-24 pb-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <HotelRussianRoomItemsCourse />
-        </div>
-      </main>
-      <Footer />
-    </>
-  );
+  return <HotelRussianRoomItemsCourse />;
 }

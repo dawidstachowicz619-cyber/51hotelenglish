@@ -3,9 +3,11 @@
 import { useEffect } from "react";
 
 import { syncCurrentUserToRoster } from "@/lib/hr/sync-employee";
+import { tryLinkHrRegistration } from "@/lib/hr/hr-registration";
 
 export function EmployeeSyncProvider() {
   useEffect(() => {
+    tryLinkHrRegistration();
     syncCurrentUserToRoster();
 
     const sync = () => syncCurrentUserToRoster();

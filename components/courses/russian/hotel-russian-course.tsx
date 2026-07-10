@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   BedDouble,
   CalendarCheck,
   ConciergeBell,
@@ -50,66 +49,60 @@ export function HotelRussianCourse() {
   return (
     <div>
       <div className="text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border-2 border-[#D52B1E]/25 bg-white px-4 py-1.5 text-sm font-bold text-[#B91C1C]">
-          <Languages className="size-4" />
-          通过中文学习俄语
+        <div className="inline-flex items-center gap-2 rounded-full border-2 border-[#D52B1E]/25 bg-white px-3 py-1 text-xs font-bold text-[#B91C1C]">
+          <Languages className="size-3.5" />
+          手机 H5 · 中俄英三语
         </div>
-        <h1 className="mt-4 font-display text-3xl text-foreground md:text-4xl">
-          酒店俄语 · 中俄英三语
-        </h1>
-        <p className="mx-auto mt-4 max-w-2xl font-semibold text-muted-foreground">
-          每个场景包含单词、常用句子、情景对话与「看中文选俄语」练习。
-          共 {stats.scenarios} 大场景、{stats.words} 个单词、{stats.sentences} 句常用表达。
+        <h1 className="mt-3 font-display text-2xl text-foreground">酒店俄语</h1>
+        <p className="mt-2 text-sm font-semibold leading-relaxed text-muted-foreground">
+          微信、Safari 均可学习 · 听发音 + 图卡 + 练习
         </p>
       </div>
 
-      <article className="mt-10 card-elevated overflow-hidden border-2 border-[#0039A6]/30 bg-gradient-to-br from-[#0039A6]/15 via-white to-[#D52B1E]/10 p-6 md:p-8">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex gap-5">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0039A6] to-[#D52B1E] text-white shadow-[0_4px_0_0_rgba(213,43,30,0.35)]">
-              <Trophy className="size-7" strokeWidth={2} />
+      <div className="mt-6 space-y-4">
+      <article className="card-elevated overflow-hidden border-2 border-[#0039A6]/30 bg-gradient-to-br from-[#0039A6]/15 via-white to-[#D52B1E]/10">
+        <div className="flex flex-col gap-4 p-4">
+          <div className="flex gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0039A6] to-[#D52B1E] text-white">
+              <Trophy className="size-6" strokeWidth={2} />
             </div>
-            <div>
-              <p className="text-xs font-bold text-muted-foreground">必修 · 每关 5 句 + 5 词</p>
-              <h2 className="mt-1 font-display text-2xl text-foreground">
-                酒店俄语闯关学习
-              </h2>
-              <p className="mt-2 max-w-xl text-sm font-semibold text-muted-foreground">
-                客房部 & 餐饮部分开 · 每部门 30 关 · 每关 5 句话 + 5 个单词
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold text-muted-foreground">必修 · 每关 5 句 + 5 词</p>
+              <h2 className="mt-0.5 font-display text-lg text-foreground">闯关学习</h2>
+              <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                客房 & 餐饮 · 各 30 关
               </p>
-              <p className="mt-2 text-xs font-extrabold text-[#0039A6]">
+              <p className="mt-1 text-[10px] font-extrabold text-[#0039A6]">
                 客房 {roomCampaign.percent}% · 餐饮 {diningCampaign.percent}%
               </p>
             </div>
           </div>
-          <Button asChild className="shrink-0 bg-gradient-to-r from-[#0039A6] to-[#D52B1E] hover:opacity-90">
+          <Button asChild className="h-11 w-full bg-gradient-to-r from-[#0039A6] to-[#D52B1E]">
             <Link href="/courses/russian/campaign">开始闯关</Link>
           </Button>
         </div>
       </article>
 
-      <article className="mt-6 card-elevated overflow-hidden border-[#0039A6]/25 bg-gradient-to-br from-[#0039A6]/10 via-white to-[#D52B1E]/10 p-6 md:p-8">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex gap-5">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0039A6] to-[#D52B1E] text-white shadow-[0_4px_0_0_rgba(213,43,30,0.35)]">
-              <CalendarCheck className="size-7" strokeWidth={2} />
+      <article className="card-elevated overflow-hidden border-[#0039A6]/25 bg-gradient-to-br from-[#0039A6]/10 via-white to-[#D52B1E]/10">
+        <div className="flex flex-col gap-4 p-4">
+          <div className="flex gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0039A6] to-[#D52B1E] text-white">
+              <CalendarCheck className="size-6" strokeWidth={2} />
             </div>
-            <div>
-              <p className="text-xs font-bold text-muted-foreground">Daily · 每日打卡</p>
-              <h2 className="mt-1 font-display text-2xl text-foreground">俄语每日打卡</h2>
-              <p className="mt-2 max-w-xl text-sm font-semibold text-muted-foreground">
-                每天 5 个词汇 · 图卡 + 小测 · 约 5 分钟 · 连续打卡赢积分
-              </p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold text-muted-foreground">Daily · 每日打卡</p>
+              <h2 className="mt-0.5 font-display text-lg text-foreground">每日打卡</h2>
+              <p className="mt-1 text-xs font-semibold text-muted-foreground">每天 5 词 · 约 5 分钟</p>
               {record && (
-                <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#D52B1E]">
-                  <Flame className="size-3.5" />
+                <p className="mt-1 inline-flex items-center gap-1 text-[10px] font-extrabold text-[#D52B1E]">
+                  <Flame className="size-3" />
                   连续 {record.currentStreak} 天
                   {todayComplete ? " · 今日已完成 ✓" : " · 今日待打卡"}
                 </p>
               )}
             </div>
           </div>
-          <Button asChild className="shrink-0 bg-[#0039A6] hover:bg-[#002d85]">
+          <Button asChild className="h-11 w-full bg-[#0039A6]">
             <Link href="/courses/russian/daily">
               {todayComplete ? "查看打卡" : "开始今日打卡"}
             </Link>
@@ -117,66 +110,61 @@ export function HotelRussianCourse() {
         </div>
       </article>
 
-      <div className="mt-10 grid gap-5 lg:grid-cols-2">
-        <article className="card-elevated overflow-hidden border-[#D52B1E]/20 bg-gradient-to-br from-[#FFF5F5] via-white to-[#0039A6]/5 p-6 md:p-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex gap-5">
-              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#D52B1E] text-white shadow-[0_4px_0_0_rgba(213,43,30,0.35)]">
-                <Layers className="size-7" strokeWidth={2} />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-muted-foreground">100 Items · AI Images</p>
-                <h2 className="mt-1 font-display text-2xl text-foreground">
-                  酒店客房常用物品俄语 100
-                </h2>
-                <p className="mt-2 max-w-xl text-sm font-semibold text-muted-foreground">
-                  床品、浴室、电器、迷你吧等 10 大类 · 图卡 + 发音 + 练习
-                </p>
-              </div>
+      <article className="card-elevated overflow-hidden border-[#D52B1E]/20 bg-gradient-to-br from-[#FFF5F5] via-white to-[#0039A6]/5">
+        <div className="flex flex-col gap-4 p-4">
+          <div className="flex gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#D52B1E] text-white">
+              <Layers className="size-6" strokeWidth={2} />
             </div>
-            <Button asChild className="shrink-0 bg-[#D52B1E] hover:bg-[#B91C1C]">
-              <Link href="/courses/russian/room-items">进入学习</Link>
-            </Button>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold text-muted-foreground">100 Items</p>
+              <h2 className="mt-0.5 font-display text-lg text-foreground">客房物品俄语</h2>
+              <p className="mt-1 text-xs font-semibold text-muted-foreground">10 大类图卡 + 练习</p>
+            </div>
           </div>
-        </article>
+          <Button asChild className="h-11 w-full bg-[#D52B1E]">
+            <Link href="/courses/russian/room-items">进入学习</Link>
+          </Button>
+        </div>
+      </article>
 
-        <article className="card-elevated overflow-hidden border-[#0039A6]/20 bg-gradient-to-br from-[#0039A6]/5 via-white to-[#FFF5F5] p-6 md:p-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex gap-5">
-              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#0039A6] text-white shadow-[0_4px_0_0_rgba(0,57,166,0.35)]">
-                <UtensilsCrossed className="size-7" strokeWidth={2} />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-muted-foreground">100 Items · AI Images</p>
-                <h2 className="mt-1 font-display text-2xl text-foreground">
-                  酒店餐饮常用物品俄语 100
-                </h2>
-                <p className="mt-2 max-w-xl text-sm font-semibold text-muted-foreground">
-                  餐具、杯具、上菜用具、饮品等 10 大类 · 图卡 + 发音 + 练习
-                </p>
-              </div>
+      <article className="card-elevated overflow-hidden border-[#0039A6]/20 bg-gradient-to-br from-[#0039A6]/5 via-white to-[#FFF5F5]">
+        <div className="flex flex-col gap-4 p-4">
+          <div className="flex gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#0039A6] text-white">
+              <UtensilsCrossed className="size-6" strokeWidth={2} />
             </div>
-            <Button asChild className="shrink-0 bg-[#0039A6] hover:bg-[#002d85]">
-              <Link href="/courses/russian/dining-items">进入学习</Link>
-            </Button>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold text-muted-foreground">100 Items</p>
+              <h2 className="mt-0.5 font-display text-lg text-foreground">餐饮物品俄语</h2>
+              <p className="mt-1 text-xs font-semibold text-muted-foreground">餐具杯具 · 图卡 + 练习</p>
+            </div>
           </div>
-        </article>
+          <Button asChild className="h-11 w-full bg-[#0039A6]">
+            <Link href="/courses/russian/dining-items">进入学习</Link>
+          </Button>
+        </div>
+      </article>
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-3">
+      <p className="mt-6 text-center text-xs font-semibold text-muted-foreground">
+        场景课 · {stats.scenarios} 场景 · {stats.words} 词 · {stats.sentences} 句
+      </p>
+
+      <div className="mt-4 grid gap-4">
         {HOTEL_RUSSIAN_SCENARIOS.map((scenario) => {
           const Icon = ICONS[scenario.icon];
           return (
             <article
               key={scenario.id}
-              className="group card-elevated flex flex-col overflow-hidden border-[#0039A6]/10 bg-white p-6 transition-all hover:-translate-y-1 hover:shadow-md"
+              className="card-elevated flex flex-col overflow-hidden border-[#0039A6]/10 bg-white p-4"
             >
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-[#0039A6] text-white shadow-[0_4px_0_0_rgba(0,57,166,0.35)]">
-                <Icon className="size-7" strokeWidth={2} />
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-[#0039A6] text-white">
+                <Icon className="size-6" strokeWidth={2} />
               </div>
-              <p className="mt-5 text-xs font-bold text-muted-foreground">{scenario.subtitle}</p>
-              <h2 className="mt-1 font-display text-xl text-foreground">{scenario.title}</h2>
-              <p className="mt-2 flex-1 text-sm font-semibold leading-relaxed text-muted-foreground">
+              <p className="mt-4 text-[10px] font-bold text-muted-foreground">{scenario.subtitle}</p>
+              <h2 className="mt-0.5 font-display text-lg text-foreground">{scenario.title}</h2>
+              <p className="mt-2 flex-1 text-xs font-semibold leading-relaxed text-muted-foreground">
                 {scenario.description}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -196,7 +184,7 @@ export function HotelRussianCourse() {
                 ))}
               </div>
               <Button
-                className="mt-6 w-full bg-[#0039A6] hover:bg-[#002d85]"
+                className="mt-4 h-11 w-full bg-[#0039A6]"
                 onClick={() => setActiveScenario(scenario)}
               >
                 开始学习
@@ -204,15 +192,6 @@ export function HotelRussianCourse() {
             </article>
           );
         })}
-      </div>
-
-      <div className="mt-10 text-center">
-        <Button variant="outline" asChild>
-          <Link href="/">
-            <ArrowLeft className="size-4" />
-            返回首页
-          </Link>
-        </Button>
       </div>
     </div>
   );

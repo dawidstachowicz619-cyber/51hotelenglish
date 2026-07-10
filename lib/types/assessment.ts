@@ -1,5 +1,15 @@
 export type CEFRLevel = "A1" | "A2" | "B1" | "B2" | "C1";
 
+export type LevelTestRecord = {
+  passed: boolean;
+  score: number;
+  correct: number;
+  total: number;
+  date: string;
+};
+
+export type LevelTestProgress = Partial<Record<CEFRLevel, LevelTestRecord>>;
+
 export type QuestionType =
   | "multiple_choice"
   | "true_false"

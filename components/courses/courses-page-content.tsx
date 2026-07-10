@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, ClipboardCheck, ConciergeBell, Languages } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAssessmentAccess } from "@/hooks/use-assessment-access";
 import { TRIAL_CEFR_LEVEL } from "@/lib/assessment/course-access";
+import {
+  getTrialLessonsRemaining,
+  isHrRegisteredUser,
+} from "@/lib/hr/hr-registration";
 import { CEFR_LABELS } from "@/lib/types/course";
 import { getFrontDeskStats } from "@/lib/data/front-desk";
 import { getRussianCourseStats } from "@/lib/data/hotel-russian-course";
@@ -16,6 +21,26 @@ const russianStats = getRussianCourseStats();
 export function CoursesPageContent() {
   const { ready, maxLevel, hasAssessment, accessibleLevels } =
     useAssessmentAccess();
+  const [hrRegistered, setHrRegistered] = useState(true);
+  const [trialRemaining, setTrialRemaining] = useState(0);
+
+  const refreshHrAccess = useCallback(() => {
+    setHrRegistered(isHrRegisteredUser());
+    setTrialRemaining(getTrialLessonsRemaining());
+  }, []);
+
+  useEffect(() => {
+    refreshHrAccess();
+    const events = [
+      "hr-registration-updated",
+      "trial-lessons-updated",
+      "points-updated",
+    ] as const;
+    for (const e of events) window.addEventListener(e, refreshHrAccess);
+    return () => {
+      for (const e of events) window.removeEventListener(e, refreshHrAccess);
+    };
+  }, [refreshHrAccess]);
 
   return (
     <>
@@ -29,6 +54,17 @@ export function CoursesPageContent() {
         <p className="mx-auto mt-4 max-w-xl font-semibold text-muted-foreground">
           根据 CEFR 测评通关级别选择课程。高级别可学习低级别内容，低级别无法进入高级别课程。
         </p>
+
+        {ready && !hrRegistered && (
+          <div className="mx-auto mt-6 max-w-lg rounded-2xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+            {trialRemaining > 0
+              ? `未注册学员可免费体验 ${trialRemaining} 课（前厅英语、CEFR 测评等）。如需继续学习，请联系酒店 HR 在后台注册。`
+              : "体验课已用完。前厅英语、CEFR 测评等课程需联系酒店 HR 后台注册后继续学习。"}
+            <Link href="/profile" className="ml-2 text-primary underline">
+              填写手机号
+            </Link>
+          </div>
+        )}
 
         {ready && hasAssessment && maxLevel && (
           <p className="mx-auto mt-4 max-w-lg rounded-2xl border-2 border-primary/30 bg-primary-light/30 px-4 py-3 text-sm font-bold text-foreground">

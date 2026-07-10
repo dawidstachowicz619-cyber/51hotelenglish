@@ -1,0 +1,11 @@
+{
+  "name": "酒店俄语 | 51HotelEnglish",
+  "short_name": "酒店俄语",
+  "description": "手机 H5 学习酒店俄语，图卡、打卡、闯关，微信与 Safari 均可使用。",
+  "start_url": "/courses/russian",
+  "display": "standalone",
+  "background_color": "#FFF5F5",
+  "theme_color": "#0039A6",
+  "lang": "zh-CN",
+  "orientation": "portrait"
+}

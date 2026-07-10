@@ -10,9 +10,9 @@ import {
   rowsToEmployeeRecords,
 } from "@/lib/hr/excel-import";
 import {
-  bulkImportHotelEmployees,
-  getExistingPhones,
-} from "@/lib/hr/roster-storage";
+  cloudImportEmployees,
+  fetchHotelEmployees,
+} from "@/lib/hr/roster-api";
 import type { EmployeeImportResult } from "@/lib/types/hr-admin";
 
 type EmployeeImportDialogProps = {
@@ -50,12 +50,14 @@ export function EmployeeImportDialog({
         });
         return;
       }
+      const existing = await fetchHotelEmployees(hotel);
+      const existingPhones = new Set(existing.map((e) => e.phone).filter(Boolean));
       const parsed = rowsToEmployeeRecords(
         hotel,
         rows,
-        getExistingPhones(hotel)
+        existingPhones
       );
-      const count = bulkImportHotelEmployees(hotel, parsed.imported);
+      const count = await cloudImportEmployees(hotel, parsed.imported);
       setResult({ ...parsed, imported: parsed.imported.slice(0, count) });
       if (count > 0) onImported();
     } catch {

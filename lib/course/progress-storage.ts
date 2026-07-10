@@ -1,6 +1,12 @@
 import type { FrontDeskProgress } from "@/lib/types/course-progress";
 import { FRONT_DESK_PROGRESS_KEY } from "@/lib/types/course-progress";
+import type { LearningCompletionResult } from "@/lib/types/learning-gate";
 import { buildProgressionMap } from "@/lib/course/progression-map";
+import {
+  afterLearningCompletion,
+  notifyLearningBlocked,
+  precheckLearningCompletion,
+} from "@/lib/hr/hr-registration";
 import { moduleToAsk } from "@/lib/hr/ask-mapping";
 import { logNodeCompletion } from "@/lib/hr/learning-history-storage";
 import { loadProfile } from "@/lib/points/storage";
@@ -81,15 +87,27 @@ export function saveFrontDeskProgress(progress: FrontDeskProgress): void {
   window.dispatchEvent(new CustomEvent("course-progress-updated"));
 }
 
-export function completeNode(nodeId: string): FrontDeskProgress {
+export function completeNode(
+  nodeId: string
+): LearningCompletionResult<FrontDeskProgress> {
   const current = loadFrontDeskProgress();
-  if (current.completedNodeIds.includes(nodeId)) return current;
+  if (current.completedNodeIds.includes(nodeId)) {
+    return { ok: true, data: current };
+  }
+
+  const block = precheckLearningCompletion();
+  if (block) {
+    notifyLearningBlocked();
+    return { ok: false, block };
+  }
+
   const next = {
     completedNodeIds: [...current.completedNodeIds, nodeId],
   };
   saveFrontDeskProgress(next);
   logNodeCompleteEvent(nodeId);
-  return next;
+  afterLearningCompletion();
+  return { ok: true, data: next };
 }
 
 export function resetFrontDeskProgress(): void {

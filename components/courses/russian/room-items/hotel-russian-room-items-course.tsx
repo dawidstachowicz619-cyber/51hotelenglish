@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, BookOpen, Layers } from "lucide-react";
+import { BookOpen, Layers } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { HOTEL_RUSSIAN_ROOM_ITEMS } from "@/lib/data/hotel-russian-room-items";
@@ -18,29 +17,15 @@ export function HotelRussianRoomItemsCourse() {
 
   return (
     <div>
-      <Button variant="outline" size="sm" asChild>
-        <Link href="/courses/russian">
-          <ArrowLeft className="size-4" />
-          返回酒店俄语
-        </Link>
-      </Button>
-
-      <div className="mt-6 flex items-start gap-4">
-        <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#0039A6] text-white shadow-[0_4px_0_0_rgba(0,57,166,0.35)]">
-          <Layers className="size-7" />
-        </div>
-        <div>
-          <p className="text-xs font-bold text-muted-foreground">Room Items · 客房物品</p>
-          <h1 className="font-display text-3xl text-foreground md:text-4xl">
-            酒店客房常用物品俄语 100
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm font-semibold text-muted-foreground">
-            通过中文学习俄语 · AI 配图 · 中俄英三语 · 发音 · 语音跟读评价 · 选择题练习
-          </p>
-        </div>
+      <div className="mb-4">
+        <p className="text-[10px] font-bold text-muted-foreground">Room Items · 客房物品</p>
+        <h1 className="font-display text-xl text-foreground">客房常用物品俄语 100</h1>
+        <p className="mt-1 text-xs font-semibold text-muted-foreground">
+          图卡学习 + 选择题练习 · 点击喇叭听发音
+        </p>
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-3">
+      <div className="-mx-1 flex gap-2 overflow-x-auto pb-1">
         {(
           [
             ["learn", "图卡学习", BookOpen],
@@ -52,7 +37,7 @@ export function HotelRussianRoomItemsCourse() {
             type="button"
             onClick={() => setTab(key)}
             className={cn(
-              "inline-flex items-center gap-2 rounded-2xl border-2 px-5 py-2.5 text-sm font-extrabold transition-all",
+              "inline-flex shrink-0 items-center gap-2 rounded-2xl border-2 px-4 py-2.5 text-sm font-extrabold transition-all active:scale-[0.98]",
               tab === key
                 ? "border-[#0039A6] bg-[#0039A6] text-white shadow-[0_3px_0_0_rgba(0,57,166,0.35)]"
                 : "border-border bg-white text-muted-foreground hover:border-[#0039A6]/30"

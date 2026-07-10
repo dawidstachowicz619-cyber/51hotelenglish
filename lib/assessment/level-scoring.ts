@@ -39,7 +39,7 @@ function buildRecommendation(level: CEFRLevel, passed: boolean): string {
     A1: "A1 已通关！建议进入前厅英语 A1 关卡，从单词模块系统学习。",
     A2: "A2 已通关！建议练习前厅英语句子与基础对话模块。",
     B1: "B1 已通关！建议深入场景模拟与 AI 客诉入门练习。",
-    B2: "B2 已通关！建议挑战高级客诉场景与 AI 陪练。",
+    B2: "B2 已通关！建议挑战高级客诉场景。",
     C1: "C1 已通关！您已具备高级专业英语能力，可进入 AI 高压场景陪练。",
   };
   return recs[level];

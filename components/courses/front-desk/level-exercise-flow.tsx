@@ -36,6 +36,10 @@ import {
   playLessonCompleteSound,
   playSuccessSound,
 } from "@/lib/audio/exercise-sounds";
+import {
+  canStartNewLearning,
+  notifyLearningBlocked,
+} from "@/lib/hr/hr-registration";
 
 const MAX_HEARTS = 5;
 
@@ -82,6 +86,14 @@ export function LevelExerciseFlow({
   const [finished, setFinished] = useState(isCompleted);
   const [outOfHearts, setOutOfHearts] = useState(false);
   const { speak, speaking, supported } = useSpeech();
+
+  useEffect(() => {
+    if (isCompleted) return;
+    if (!canStartNewLearning()) {
+      notifyLearningBlocked();
+      onBack();
+    }
+  }, [isCompleted, onBack]);
 
   const current = exercises[index];
   const progress = exercises.length

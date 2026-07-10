@@ -10,6 +10,7 @@ import {
   buildRoomItemPracticeQuestions,
   pickRandomRoomItemSubset,
 } from "@/lib/course/room-item-practice";
+import { logRussianItemsPracticeSession } from "@/lib/course/russian-items-progress-storage";
 import { HOTEL_RUSSIAN_ROOM_ITEMS } from "@/lib/data/hotel-russian-room-items";
 import { getRoomItemById } from "@/lib/data/hotel-russian-room-items";
 import { ROOM_ITEM_CATEGORY_LABELS } from "@/lib/types/hotel-russian-room-item";
@@ -61,6 +62,19 @@ export function RoomItemsPracticeTab() {
     setShowFeedback(false);
     setCorrectCount(0);
     setFinished(false);
+  };
+
+  const finishSession = () => {
+    const score = Math.round((correctCount / questions.length) * 100);
+    const result = logRussianItemsPracticeSession("room", {
+      score,
+      correctCount,
+      totalCount: questions.length,
+      mode: mode === "image" ? "看图选词" : "看中文选词",
+      itemIds: subset.map((item) => item.id),
+    });
+    if (!result.ok) return;
+    setFinished(true);
   };
 
   if (finished) {
@@ -246,7 +260,7 @@ export function RoomItemsPracticeTab() {
                     setSelected(null);
                     setShowFeedback(false);
                   } else {
-                    setFinished(true);
+                    finishSession();
                   }
                 }}
               >

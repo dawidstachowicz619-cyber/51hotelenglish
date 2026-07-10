@@ -5,12 +5,12 @@ import Link from "next/link";
 import { ArrowLeft, BarChart3, LogOut, RefreshCw, Shield } from "lucide-react";
 
 import { DepartmentBreakdown, DepartmentRanking, LevelBreakdown } from "@/components/admin/hr/hr-charts";
-import { EmployeeDetailPanel } from "@/components/admin/hr/employee-detail-panel";
 import { EmployeeTable } from "@/components/admin/hr/employee-table";
 import { HotelStatsCards } from "@/components/admin/hr/hotel-stats-cards";
 import { PlatformLoginGate } from "@/components/admin/platform/platform-login-gate";
 import { Button } from "@/components/ui/button";
 import { computeHotelStats } from "@/lib/hr/hotel-analytics";
+import { platformEmployeeRecordPath } from "@/lib/hr/employee-record-path";
 import { getAllManagedHotels } from "@/lib/hr/hotel-registry";
 import { decodeHotelSlug } from "@/lib/hr/hotel-slug";
 import {
@@ -29,7 +29,6 @@ export function PlatformHotelLearningDashboard({ slug }: Props) {
   const hotel = decodeHotelSlug(slug);
   const [authed, setAuthed] = useState(false);
   const [employees, setEmployees] = useState<EmployeeLearningRecord[]>([]);
-  const [selected, setSelected] = useState<EmployeeLearningRecord | null>(null);
 
   const isKnownHotel = useMemo(() => {
     if (!authed) return true;
@@ -69,7 +68,6 @@ export function PlatformHotelLearningDashboard({ slug }: Props) {
   const handleLogout = () => {
     clearPlatformAdminSession();
     setAuthed(false);
-    setSelected(null);
   };
 
   if (!authed) {
@@ -155,23 +153,12 @@ export function PlatformHotelLearningDashboard({ slug }: Props) {
         <LevelBreakdown stats={stats} />
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-3">
-        <div className={selected ? "xl:col-span-2" : "xl:col-span-3"}>
-          <EmployeeTable
-            hotel={hotel}
-            employees={employees}
-            selectedId={selected?.id ?? null}
-            onSelect={setSelected}
-          />
-        </div>
-        {selected && (
-          <div className="xl:col-span-1">
-            <EmployeeDetailPanel
-              employee={selected}
-              onClose={() => setSelected(null)}
-            />
-          </div>
-        )}
+      <div className="mt-6">
+        <EmployeeTable
+          hotel={hotel}
+          employees={employees}
+          getEmployeeHref={(emp) => platformEmployeeRecordPath(hotel, emp.id)}
+        />
       </div>
     </div>
   );

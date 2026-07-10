@@ -28,6 +28,10 @@ export type UserPointsProfile = {
   history: PointsEvent[];
   lastDailyBonus: string | null;
   visitedCourses: string[];
+  /** 与 HR 花名册匹配的手机号 */
+  phone?: string;
+  /** 已由企业 HR 注册 */
+  hrRegistered?: boolean;
 };
 
 export type LeaderboardEntry = {

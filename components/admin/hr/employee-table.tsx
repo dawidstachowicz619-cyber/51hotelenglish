@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronRight, Search, Trash2 } from "lucide-react";
 
 import { getDepartmentLabel, getHotelDepartments } from "@/lib/hr/hotel-department-storage";
 import type { EmployeeDepartment, EmployeeLearningRecord } from "@/lib/types/hr-admin";
@@ -10,8 +11,9 @@ import { cn } from "@/lib/utils";
 type EmployeeTableProps = {
   hotel: string;
   employees: EmployeeLearningRecord[];
-  selectedId: string | null;
-  onSelect: (employee: EmployeeLearningRecord) => void;
+  selectedId?: string | null;
+  onSelect?: (employee: EmployeeLearningRecord) => void;
+  getEmployeeHref?: (employee: EmployeeLearningRecord) => string;
   onDelete?: (employee: EmployeeLearningRecord) => void;
 };
 
@@ -29,10 +31,12 @@ function formatDate(iso: string) {
 export function EmployeeTable({
   hotel,
   employees,
-  selectedId,
+  selectedId = null,
   onSelect,
+  getEmployeeHref,
   onDelete,
 }: EmployeeTableProps) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [deptFilter, setDeptFilter] = useState<EmployeeDepartment | "all">(
     "all"
@@ -60,10 +64,25 @@ export function EmployeeTable({
     });
   }, [employees, query, deptFilter]);
 
+  const handleRowClick = (emp: EmployeeLearningRecord) => {
+    if (getEmployeeHref) {
+      router.push(getEmployeeHref(emp));
+      return;
+    }
+    onSelect?.(emp);
+  };
+
   return (
     <div className="card-elevated overflow-hidden">
       <div className="flex flex-col gap-3 border-b-2 border-border p-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="font-display text-lg text-foreground">员工学习数据</h2>
+        <div>
+          <h2 className="font-display text-lg text-foreground">员工学习数据</h2>
+          {getEmployeeHref && (
+            <p className="text-xs font-semibold text-muted-foreground">
+              点击学员姓名查看全部学习记录
+            </p>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -105,6 +124,7 @@ export function EmployeeTable({
               <th className="px-4 py-3">进度</th>
               <th className="px-4 py-3">积分</th>
               <th className="px-4 py-3">最近活跃</th>
+              {getEmployeeHref && <th className="px-4 py-3 w-10" aria-label="查看" />}
               {onDelete && <th className="px-4 py-3 w-12" aria-label="操作" />}
             </tr>
           </thead>
@@ -114,7 +134,7 @@ export function EmployeeTable({
               return (
                 <tr
                   key={emp.id}
-                  onClick={() => onSelect(emp)}
+                  onClick={() => handleRowClick(emp)}
                   className={cn(
                     "cursor-pointer border-b border-border transition-colors hover:bg-muted/40",
                     selectedId === emp.id && "bg-secondary/5"
@@ -122,7 +142,14 @@ export function EmployeeTable({
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-foreground">
+                      <span
+                        className={cn(
+                          "font-extrabold",
+                          getEmployeeHref
+                            ? "text-primary underline-offset-2 hover:underline"
+                            : "text-foreground"
+                        )}
+                      >
                         {emp.nickname}
                       </span>
                       {emp.isImported && (
@@ -186,6 +213,11 @@ export function EmployeeTable({
                       {formatDate(emp.lastActiveAt)}
                     </p>
                   </td>
+                  {getEmployeeHref && (
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <ChevronRight className="size-4" />
+                    </td>
+                  )}
                   {onDelete && (
                     <td className="px-4 py-3">
                       <button

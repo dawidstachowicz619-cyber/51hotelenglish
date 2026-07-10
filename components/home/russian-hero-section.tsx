@@ -21,7 +21,7 @@ export function RussianHeroSection() {
         <div className="mx-auto max-w-3xl text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border-2 border-[#D52B1E]/30 bg-white px-4 py-1.5 text-sm font-bold text-[#B91C1C]">
             <Languages className="size-4" />
-            酒店俄语 · 轻松开练
+            酒店俄语 · 手机 H5 开练
           </div>
 
           <h1 className="font-display text-4xl leading-tight text-foreground sm:text-5xl md:text-6xl">
@@ -39,7 +39,7 @@ export function RussianHeroSection() {
 
           <p className="mx-auto mt-6 max-w-xl text-lg font-semibold leading-relaxed text-muted-foreground">
             通过中文学俄语 · 前厅、餐饮、客房场景课程 + 客房/餐饮物品 200 词图卡。
-            每天 15 分钟，自信接待俄罗斯宾客。
+            手机打开即可学，微信、Safari 均可用，每天 15 分钟自信接待俄罗斯宾客。
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">

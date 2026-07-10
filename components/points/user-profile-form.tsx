@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { isValidLearnerPhone } from "@/lib/hr/hr-registration";
 import { usePoints } from "@/hooks/use-points";
 
 type UserProfileFormProps = {
@@ -13,11 +14,21 @@ export function UserProfileForm({ onComplete }: UserProfileFormProps) {
   const { profile, saveUserInfo } = usePoints();
   const [nickname, setNickname] = useState(profile?.nickname ?? "");
   const [hotel, setHotel] = useState(profile?.hotel ?? "");
+  const [phone, setPhone] = useState(profile?.phone ?? "");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nickname.trim()) return;
-    saveUserInfo(nickname, hotel);
+
+    const trimmedPhone = phone.trim();
+    if (trimmedPhone && !isValidLearnerPhone(trimmedPhone)) {
+      setPhoneError("请输入 11 位中国大陆手机号");
+      return;
+    }
+
+    setPhoneError(null);
+    saveUserInfo(nickname, hotel, trimmedPhone);
     onComplete();
   };
 
@@ -25,7 +36,7 @@ export function UserProfileForm({ onComplete }: UserProfileFormProps) {
     <form onSubmit={handleSubmit} className="card-elevated p-6">
       <h2 className="font-display text-xl text-foreground">完善学习档案</h2>
       <p className="mt-2 text-sm font-semibold text-muted-foreground">
-        填写昵称和所在酒店，即可参与积分排名。
+        填写昵称、酒店与手机号。手机号须与 HR 在后台登记的一致，方可解锁全部课程。
       </p>
 
       <div className="mt-6 space-y-4">
@@ -45,7 +56,7 @@ export function UserProfileForm({ onComplete }: UserProfileFormProps) {
         </div>
         <div>
           <label className="text-xs font-extrabold uppercase text-muted-foreground">
-            所在酒店
+            所在酒店 *
           </label>
           <input
             type="text"
@@ -54,12 +65,40 @@ export function UserProfileForm({ onComplete }: UserProfileFormProps) {
             placeholder="如：上海XX酒店"
             className="mt-1 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
             maxLength={40}
+            required
           />
+        </div>
+        <div>
+          <label className="text-xs font-extrabold uppercase text-muted-foreground">
+            手机号 *
+          </label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => {
+              setPhone(e.target.value);
+              setPhoneError(null);
+            }}
+            placeholder="与 HR 登记一致，如：13800138000"
+            className="mt-1 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-primary"
+            required
+            maxLength={11}
+          />
+          {phoneError && (
+            <p className="mt-1 text-xs font-bold text-red">{phoneError}</p>
+          )}
+          <p className="mt-1.5 text-[10px] font-semibold text-muted-foreground">
+            未在 HR 后台注册前，仅可体验 1 课；注册后自动解锁全部课程。
+          </p>
         </div>
       </div>
 
-      <Button type="submit" className="mt-6 w-full" disabled={!nickname.trim()}>
-        保存并参与排名
+      <Button
+        type="submit"
+        className="mt-6 w-full"
+        disabled={!nickname.trim() || !hotel.trim() || !phone.trim()}
+      >
+        保存档案
       </Button>
     </form>
   );

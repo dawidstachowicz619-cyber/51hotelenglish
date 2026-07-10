@@ -3,8 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
-  CalendarCheck,
   CheckCircle2,
   Flame,
   Sparkles,
@@ -62,42 +60,29 @@ export function RussianDailyCheckInCourse() {
       todayPack.source,
       today
     );
-    setEarnedPoints(result.earnedPoints);
-    setStreakBonus(result.streakBonus);
+    if (!result.ok) return;
+    setEarnedPoints(result.data.earnedPoints);
+    setStreakBonus(result.data.streakBonus);
     refresh();
     setStep("done");
   };
 
   return (
     <div>
-      <Button variant="outline" size="sm" asChild>
-        <Link href="/courses/russian">
-          <ArrowLeft className="size-4" />
-          返回酒店俄语
-        </Link>
-      </Button>
-
-      <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0039A6] to-[#D52B1E] text-white shadow-[0_4px_0_0_rgba(213,43,30,0.35)]">
-            <CalendarCheck className="size-7" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-muted-foreground">Daily Check-in · 每日打卡</p>
-            <h1 className="font-display text-3xl text-foreground md:text-4xl">俄语每日打卡</h1>
-            <p className="mt-2 max-w-xl text-sm font-semibold text-muted-foreground">
-              每天 5 个词汇 · 图卡学习 + 小测验 · 连续打卡赢积分
-            </p>
-          </div>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold text-muted-foreground">Daily Check-in · 每日打卡</p>
+          <h1 className="font-display text-xl text-foreground">俄语每日打卡</h1>
+          <p className="mt-1 text-xs font-semibold text-muted-foreground">
+            每天 5 词 · 图卡 + 小测验 · 连续打卡赢积分
+          </p>
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl border-2 border-[#D52B1E]/25 bg-[#FFF5F5] px-4 py-3">
-          <Flame className="size-8 text-[#D52B1E]" />
+        <div className="flex shrink-0 items-center gap-2 rounded-2xl border-2 border-[#D52B1E]/25 bg-[#FFF5F5] px-3 py-2">
+          <Flame className="size-6 text-[#D52B1E]" />
           <div>
-            <p className="text-2xl font-display leading-none text-[#B91C1C]">
-              {record.currentStreak}
-            </p>
-            <p className="text-xs font-bold text-muted-foreground">连续天数</p>
+            <p className="text-xl font-display leading-none text-[#B91C1C]">{record.currentStreak}</p>
+            <p className="text-[10px] font-bold text-muted-foreground">连续天</p>
           </div>
         </div>
       </div>

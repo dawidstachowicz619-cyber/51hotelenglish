@@ -22,22 +22,21 @@ import {
   countHrAccountsByHotel,
 } from "@/lib/hr/hr-admin-accounts";
 import {
-  getAllHotelHrPermissions,
-  saveHotelHrPermissions,
-  setAllHotelHrPermissions,
-  setHotelHrEnabled,
-  setHotelHrPermission,
-} from "@/lib/hr/hotel-hr-permissions";
-import {
-  getAllManagedHotels,
-  registerHotel,
-} from "@/lib/hr/hotel-registry";
+  cloudRegisterHotel,
+  cloudSaveHotelPermissions,
+  cloudSetAllHotelHrPermissions,
+  cloudSetHotelHrEnabled,
+  cloudSetHotelHrPermission,
+  fetchHotelPermissionsList,
+  fetchManagedHotels,
+} from "@/lib/hr/platform-api";
+import { fetchHotelEmployees, fetchPlatformEmployees } from "@/lib/hr/roster-api";
 import { hotelLearningPath } from "@/lib/hr/hotel-slug";
 import {
   clearPlatformAdminSession,
   loadPlatformAdminSession,
 } from "@/lib/hr/platform-admin-session";
-import { getHotelEmployees } from "@/lib/hr/roster-storage";
+import { isCloudSyncActive } from "@/lib/storage/cloud-sync";
 import {
   HR_PERMISSION_KEYS,
   HR_PERMISSION_LABELS,
@@ -54,12 +53,26 @@ export function PlatformAdminDashboard() {
   const [newHotel, setNewHotel] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const [accountCount, setAccountCount] = useState(0);
+  const [employeeCounts, setEmployeeCounts] = useState<Record<string, number>>({});
 
   const refresh = useCallback(() => {
-    const list = getAllManagedHotels();
-    setHotels(list);
-    setConfigs(getAllHotelHrPermissions(list));
-    setAccountCount(countEnabledHrAccounts());
+    void (async () => {
+      const list = await fetchManagedHotels();
+      setHotels(list);
+      setConfigs(await fetchHotelPermissionsList(list));
+      if (isCloudSyncActive()) {
+        const employees = await fetchPlatformEmployees();
+        setAccountCount(employees.length);
+      } else {
+        setAccountCount(countEnabledHrAccounts());
+      }
+      const counts: Record<string, number> = {};
+      for (const h of list) {
+        const emps = await fetchHotelEmployees(h);
+        counts[h] = emps.length;
+      }
+      setEmployeeCounts(counts);
+    })();
   }, []);
 
   useEffect(() => {
@@ -89,20 +102,21 @@ export function PlatformAdminDashboard() {
 
   const handleAddHotel = () => {
     setAddError(null);
-    if (!registerHotel(newHotel)) {
-      setAddError("酒店名称无效或已存在");
-      return;
-    }
-    setNewHotel("");
-    refresh();
+    void cloudRegisterHotel(newHotel).then((ok) => {
+      if (!ok) {
+        setAddError("酒店名称无效或已存在");
+        return;
+      }
+      setNewHotel("");
+      refresh();
+    });
   };
 
   const getConfig = (hotel: string) =>
     configs.find((c) => c.hotel === hotel) ?? null;
 
   const handleToggleEnabled = (hotel: string, enabled: boolean) => {
-    setHotelHrEnabled(hotel, enabled);
-    refresh();
+    void cloudSetHotelHrEnabled(hotel, enabled).then(refresh);
   };
 
   const handleTogglePermission = (
@@ -110,20 +124,17 @@ export function PlatformAdminDashboard() {
     permission: HrPermissionKey,
     allowed: boolean
   ) => {
-    setHotelHrPermission(hotel, permission, allowed);
-    refresh();
+    void cloudSetHotelHrPermission(hotel, permission, allowed).then(refresh);
   };
 
   const handleSetAll = (hotel: string, allowed: boolean) => {
-    setAllHotelHrPermissions(hotel, allowed);
-    refresh();
+    void cloudSetAllHotelHrPermissions(hotel, allowed).then(refresh);
   };
 
   const handleSaveNote = (hotel: string, note: string) => {
     const current = getConfig(hotel);
     if (!current) return;
-    saveHotelHrPermissions({ ...current, note });
-    refresh();
+    void cloudSaveHotelPermissions({ ...current, note }).then(refresh);
   };
 
   if (!authed) {
@@ -159,6 +170,12 @@ export function PlatformAdminDashboard() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/platform/analytics/russian">酒店俄语统计</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/platform/analytics">全平台课程统计</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
             <Link href="/admin/platform/courses">课程内容管理</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
@@ -189,7 +206,7 @@ export function PlatformAdminDashboard() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {hotels.map((hotel) => {
             const config = getConfig(hotel);
-            const employeeCount = getHotelEmployees(hotel).length;
+            const employeeCount = employeeCounts[hotel] ?? 0;
             return (
               <Link
                 key={hotel}

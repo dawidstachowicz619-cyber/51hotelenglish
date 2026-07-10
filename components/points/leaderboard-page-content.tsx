@@ -1,18 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Building2, Star, TrendingUp, Trophy, Zap } from "lucide-react";
 
 import { LeaderboardTable } from "@/components/points/leaderboard-table";
 import { UserProfileForm } from "@/components/points/user-profile-form";
 import { usePoints } from "@/hooks/use-points";
-import {
-  buildHotelLeaderboard,
-  buildLeaderboard,
-  getHotelMemberCount,
-} from "@/lib/points/leaderboard";
+import { fetchLeaderboard } from "@/lib/points/leaderboard-api";
 import { POINTS_RULES } from "@/lib/points/rules";
-import type { LeaderboardPeriod, LeaderboardScope } from "@/lib/types/points";
+import type { LeaderboardEntry, LeaderboardPeriod, LeaderboardScope } from "@/lib/types/points";
 import { cn } from "@/lib/utils";
 
 export function LeaderboardPageContent() {
@@ -29,19 +25,28 @@ export function LeaderboardPageContent() {
   } = usePoints();
   const [period, setPeriod] = useState<LeaderboardPeriod>("weekly");
   const [scope, setScope] = useState<LeaderboardScope>("global");
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [loadingBoard, setLoadingBoard] = useState(false);
+
+  useEffect(() => {
+    if (!profile?.nickname) return;
+    setLoadingBoard(true);
+    void fetchLeaderboard(profile, period, scope)
+      .then(setEntries)
+      .finally(() => setLoadingBoard(false));
+  }, [profile, period, scope]);
 
   if (!profile) return null;
 
   const isHotelScope = scope === "hotel";
-  const entries = isHotelScope
-    ? buildHotelLeaderboard(profile, period)
-    : buildLeaderboard(profile, period);
-
   const globalRank = period === "weekly" ? weeklyRank : alltimeRank;
   const hotelRank = period === "weekly" ? hotelWeeklyRank : hotelAlltimeRank;
   const currentRank = isHotelScope ? hotelRank : globalRank;
   const secondaryRank = isHotelScope ? globalRank : hotelRank;
-  const hotelMemberCount = hasHotel ? getHotelMemberCount(profile) : 0;
+  const hotelMemberCount =
+    isHotelScope && hasHotel
+      ? entries.filter((e) => !e.isCurrentUser || entries.length > 0).length
+      : 0;
 
   return (
     <div className="mx-auto max-w-3xl px-6 pb-24 pt-24 lg:px-8">
@@ -54,7 +59,7 @@ export function LeaderboardPageContent() {
         </h1>
         <p className="mt-3 font-semibold text-muted-foreground">
           {isHotelScope && hasHotel
-            ? `${profile.hotel} 内部排行 · 共 ${hotelMemberCount} 人`
+            ? `${profile.hotel} 内部排行 · 共 ${hotelMemberCount || entries.length} 人`
             : "通过测评、课程学习赚取积分，与全国酒店同仁一较高下"}
         </p>
       </div>
@@ -164,9 +169,7 @@ export function LeaderboardPageContent() {
           {isHotelScope && !hasHotel && (
             <div className="mt-6 rounded-2xl border-2 border-secondary/30 bg-secondary/5 p-6 text-center">
               <Building2 className="mx-auto size-8 text-secondary" />
-              <p className="mt-3 font-bold text-foreground">
-                请先填写所在酒店
-              </p>
+              <p className="mt-3 font-bold text-foreground">请先填写所在酒店</p>
               <p className="mt-1 text-sm font-semibold text-muted-foreground">
                 完善酒店信息后即可查看本酒店内部排名
               </p>
@@ -175,11 +178,17 @@ export function LeaderboardPageContent() {
 
           {(!isHotelScope || hasHotel) && (
             <div className="mt-6">
-              <LeaderboardTable entries={entries} showHotel={!isHotelScope} />
+              {loadingBoard ? (
+                <p className="text-center text-sm font-bold text-muted-foreground">
+                  加载排行…
+                </p>
+              ) : (
+                <LeaderboardTable entries={entries} showHotel={!isHotelScope} />
+              )}
             </div>
           )}
 
-          {isHotelScope && hasHotel && entries.length <= 1 && (
+          {isHotelScope && hasHotel && entries.length <= 1 && !loadingBoard && (
             <p className="mt-4 text-center text-sm font-semibold text-muted-foreground">
               你是本酒店首位学员，邀请同事一起学习吧！
             </p>

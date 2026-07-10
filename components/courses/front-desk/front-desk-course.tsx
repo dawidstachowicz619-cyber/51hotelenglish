@@ -22,6 +22,12 @@ import {
   pickStudyLevelForMap,
 } from "@/lib/course/progression-map";
 import { TRIAL_CEFR_LEVEL } from "@/lib/assessment/course-access";
+import {
+  canStartNewLearning,
+  getTrialLessonsRemaining,
+  isHrRegisteredUser,
+  notifyLearningBlocked,
+} from "@/lib/hr/hr-registration";
 import { getFrontDeskWorkScenarios } from "@/lib/course/course-content-resolver";
 import type { CefrLevel } from "@/lib/types/course";
 import { CEFR_LABELS } from "@/lib/types/course";
@@ -119,6 +125,11 @@ export function FrontDeskCourse() {
   };
 
   const handleSelectNode = (node: ProgressionNode) => {
+    const isReview = completedNodeIds.includes(node.id);
+    if (!isReview && !canStartNewLearning()) {
+      notifyLearningBlocked();
+      return;
+    }
     setActiveNode(node);
   };
 
@@ -126,7 +137,8 @@ export function FrontDeskCourse() {
 
   const handleComplete = () => {
     if (!activeNode) return;
-    completeNode(activeNode.id);
+    const result = completeNode(activeNode.id);
+    if (!result.ok) return;
     setActiveNode(null);
   };
 
@@ -156,6 +168,24 @@ export function FrontDeskCourse() {
           <ArrowLeft className="size-4" />
           返回课程列表
         </Link>
+
+        {!isHrRegisteredUser() && (
+          <div className="mt-6 rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 text-center">
+            <p className="text-sm font-extrabold text-amber-900">
+              {getTrialLessonsRemaining() > 0
+                ? `体验模式：还可免费学习 ${getTrialLessonsRemaining()} 课`
+                : "体验课已用完，请联系酒店 HR 后台注册后继续学习"}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-amber-800/80">
+              未注册学员仅可体验 1 课；HR 注册后可学习全部前厅英语课程
+            </p>
+            {getTrialLessonsRemaining() === 0 && (
+              <Button className="mt-3" variant="secondary" size="sm" asChild>
+                <Link href="/profile">完善个人档案</Link>
+              </Button>
+            )}
+          </div>
+        )}
 
         {!hasAssessment && (
           <div className="mt-6 rounded-2xl border-2 border-secondary/30 bg-secondary/10 p-4 text-center">

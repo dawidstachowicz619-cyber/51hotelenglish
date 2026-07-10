@@ -30,9 +30,9 @@ export function useCourseProgress() {
 
   const completeNode = useCallback(
     (nodeId: string) => {
-      const next = completeNodeStorage(nodeId);
-      setProgress(next);
-      return next;
+      const result = completeNodeStorage(nodeId);
+      if (result.ok) setProgress(result.data);
+      return result;
     },
     []
   );

@@ -1,8 +1,14 @@
 import type { EmployeeTrainingProgress } from "@/lib/types/hr-training";
 import { EMPLOYEE_TRAINING_PROGRESS_KEY } from "@/lib/types/hr-training";
 import type { AskDimension, LearningPhase } from "@/lib/types/learning-record";
-import { loadProfile } from "@/lib/points/storage";
 import { appendLearningHistory } from "@/lib/hr/learning-history-storage";
+import {
+  afterLearningCompletion,
+  notifyLearningBlocked,
+  precheckLearningCompletion,
+} from "@/lib/hr/hr-registration";
+import { loadProfile } from "@/lib/points/storage";
+import type { LearningCompletionResult } from "@/lib/types/learning-gate";
 
 const EMPTY: EmployeeTrainingProgress = {
   completedModuleIds: [],
@@ -35,12 +41,21 @@ export function completeTrainingModule(
   moduleId: string,
   score: number,
   meta: { title: string; phase: string; ask: string }
-): EmployeeTrainingProgress {
+): LearningCompletionResult<EmployeeTrainingProgress> {
   const profile = loadProfile();
   const store = loadAll();
   const current = store[profile.userId] ?? { ...EMPTY };
+  const alreadyDone = current.completedModuleIds.includes(moduleId);
 
-  if (!current.completedModuleIds.includes(moduleId)) {
+  if (!alreadyDone) {
+    const block = precheckLearningCompletion();
+    if (block) {
+      notifyLearningBlocked();
+      return { ok: false, block };
+    }
+  }
+
+  if (!alreadyDone) {
     current.completedModuleIds.push(moduleId);
   }
   current.moduleScores[moduleId] = Math.max(current.moduleScores[moduleId] ?? 0, score);
@@ -49,17 +64,20 @@ export function completeTrainingModule(
   store[profile.userId] = current;
   saveAll(store);
 
-  appendLearningHistory({
-    employeeId: profile.userId,
-    at: new Date().toISOString(),
-    phase: meta.phase as LearningPhase,
-    ask: meta.ask as AskDimension,
-    title: meta.title,
-    subtitle: `HR 培训课程 · 测验 ${score}%`,
-    score,
-  });
+  if (!alreadyDone) {
+    appendLearningHistory({
+      employeeId: profile.userId,
+      at: new Date().toISOString(),
+      phase: meta.phase as LearningPhase,
+      ask: meta.ask as AskDimension,
+      title: meta.title,
+      subtitle: `HR 培训课程 · 测验 ${score}%`,
+      score,
+    });
+    afterLearningCompletion();
+  }
 
-  return current;
+  return { ok: true, data: current };
 }
 
 export function isModuleCompleted(moduleId: string, userId?: string): boolean {

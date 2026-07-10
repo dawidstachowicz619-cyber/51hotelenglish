@@ -108,6 +108,16 @@
   .card-elevated {
     @apply rounded-2xl border-2 border-border bg-card;
   }
+
+  .russian-h5 {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .russian-h5 button,
+  .russian-h5 a {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @media print {

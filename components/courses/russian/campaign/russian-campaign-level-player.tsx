@@ -54,7 +54,13 @@ export function RussianCampaignLevelPlayer({
     const score = Math.round((correctCount / questions.length) * 100);
     setFinalScore(score);
     if (score >= PASS_SCORE) {
-      completeRussianCampaignLevel(level.department, level.level, score, level.title);
+      const result = completeRussianCampaignLevel(
+        level.department,
+        level.level,
+        score,
+        level.title
+      );
+      if (!result.ok) return;
     }
     setPhase("done");
   };
@@ -62,7 +68,7 @@ export function RussianCampaignLevelPlayer({
   if (phase === "learn") {
     return (
       <div>
-        <Button variant="outline" size="sm" onClick={onBack}>
+        <Button size="sm" onClick={onBack}>
           返回闯关地图
         </Button>
         <div className="mt-4 rounded-2xl border-2 border-[#0039A6]/20 bg-[#0039A6]/5 px-5 py-4">

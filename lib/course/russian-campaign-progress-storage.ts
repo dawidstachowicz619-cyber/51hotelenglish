@@ -1,6 +1,12 @@
 import { appendLearningHistory } from "@/lib/hr/learning-history-storage";
+import {
+  afterLearningCompletion,
+  notifyLearningBlocked,
+  precheckLearningCompletion,
+} from "@/lib/hr/hr-registration";
 import { addPoints, loadProfile } from "@/lib/points/storage";
 import { POINTS_RULES } from "@/lib/points/rules";
+import type { LearningCompletionResult } from "@/lib/types/learning-gate";
 import type {
   RussianCampaignDepartment,
   RussianCampaignProgress,
@@ -77,13 +83,22 @@ export function completeRussianCampaignLevel(
   level: number,
   score: number,
   title: string
-): RussianCampaignProgress {
+): LearningCompletionResult<RussianCampaignProgress> {
   const profile = loadProfile();
   const store = loadStore();
   const current = getDeptProgress(store, profile.userId, department);
   const id = campaignLevelId(department, level);
+  const alreadyDone = current.completedLevelIds.includes(id);
 
-  if (!current.completedLevelIds.includes(id)) {
+  if (!alreadyDone) {
+    const block = precheckLearningCompletion();
+    if (block) {
+      notifyLearningBlocked();
+      return { ok: false, block };
+    }
+  }
+
+  if (!alreadyDone) {
     current.completedLevelIds.push(id);
     addPoints("russian_campaign_level", {
       points: 15,
@@ -102,17 +117,20 @@ export function completeRussianCampaignLevel(
   store[profile.userId][department] = current;
   saveStore(store);
 
-  appendLearningHistory({
-    employeeId: profile.userId,
-    at: new Date().toISOString(),
-    phase: "general",
-    ask: "skill",
-    title: `俄语必修 · ${title}`,
-    subtitle: `${department === "room" ? "客房部" : "餐饮部"} · 第 ${level} 关 · ${score}%`,
-    score,
-  });
+  if (!alreadyDone) {
+    appendLearningHistory({
+      employeeId: profile.userId,
+      at: new Date().toISOString(),
+      phase: "general",
+      ask: "skill",
+      title: `俄语必修 · ${title}`,
+      subtitle: `${department === "room" ? "客房部" : "餐饮部"} · 第 ${level} 关 · ${score}%`,
+      score,
+    });
+    afterLearningCompletion();
+  }
 
-  return current;
+  return { ok: true, data: current };
 }
 
 export function getDepartmentProgressPercent(

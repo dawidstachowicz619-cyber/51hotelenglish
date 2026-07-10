@@ -21,7 +21,7 @@ const COURSE_BY_LEVEL: Record<CEFRLevel, { path: string; label: string }> = {
   A2: { path: "/courses/front-desk", label: "前厅英语 · 句子与对话" },
   B1: { path: "/courses/front-desk", label: "前厅英语 · 场景实战" },
   B2: { path: "/courses/front-desk", label: "前厅英语 · 高级客诉" },
-  C1: { path: "/ai-coach", label: "AI 陪练 · 高压场景" },
+  C1: { path: "/courses/front-desk", label: "前厅英语 · 高级场景" },
 };
 
 function initLevelRecord() {
@@ -74,8 +74,8 @@ function buildRecommendation(level: CEFRLevel): string {
     A1: "建议从前厅英语「单词」模块开始，打好基础词汇量，再逐步进入句子和对话练习。",
     A2: "您已具备基础沟通能力。建议重点练习前厅英语「句子」和「对话」模块，提升实际接待表达。",
     B1: "您已能应对大多数酒店工作场景。建议深入「场景」模块，并开始尝试 AI 客诉模拟。",
-    B2: "您的英语水平较高。建议挑战高级客诉场景和 AI 陪练，精进 diplomatic communication 技巧。",
-    C1: "您已具备高级专业英语能力。建议通过 AI 陪练保持语感，并学习更细分的 F&B、客房专项课程。",
+    B2: "您的英语水平较高。建议挑战高级客诉场景，精进 diplomatic communication 技巧。",
+    C1: "您已具备高级专业英语能力。建议继续前厅高级课程，并学习更细分的 F&B、客房专项课程。",
   };
   return recs[level];
 }

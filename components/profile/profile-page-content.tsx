@@ -2,7 +2,9 @@
 
 import { Trophy, TrendingUp, Star, History, Building2 } from "lucide-react";
 
+import { PhoneLoginCard } from "@/components/auth/phone-login-card";
 import { UserProfileForm } from "@/components/points/user-profile-form";
+import { ProfileCourseStatsSection } from "@/components/profile/profile-course-stats-section";
 import { usePoints } from "@/hooks/use-points";
 import { POINTS_RULES } from "@/lib/points/rules";
 
@@ -22,7 +24,7 @@ export function ProfilePageContent() {
   if (!profile) return null;
 
   return (
-    <div className="mx-auto max-w-2xl px-6 pb-24 pt-24 lg:px-8">
+    <div className="mx-auto max-w-5xl px-6 pb-24 pt-24 lg:px-8">
       <div className="text-center">
         <span className="mx-auto flex size-20 items-center justify-center rounded-2xl bg-primary text-3xl font-extrabold text-white shadow-[0_4px_0_0_var(--primary-dark)]">
           {(profile.nickname || "学").charAt(0).toUpperCase()}
@@ -94,8 +96,16 @@ export function ProfilePageContent() {
       )}
 
       <div className="mt-10">
+        <PhoneLoginCard />
+      </div>
+
+      <div className="mt-6">
         <UserProfileForm onComplete={refresh} />
       </div>
+
+      {isProfileComplete && (
+        <ProfileCourseStatsSection onSeeded={refresh} />
+      )}
 
       {profile.history.length > 0 && (
         <div className="mt-8 card-elevated p-6">

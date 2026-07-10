@@ -93,7 +93,7 @@ export function buildCurrentEmployeeRecord(): EmployeeLearningRecord | null {
   return {
     id: profile.userId,
     nickname,
-    phone: rosterMatch?.phone ?? "",
+    phone: rosterMatch?.phone ?? profile.phone ?? "",
     hotel,
     department: rosterMatch?.department ?? meta?.department ?? defaultDepartment,
     role: rosterMatch?.role ?? meta?.role ?? "学员",

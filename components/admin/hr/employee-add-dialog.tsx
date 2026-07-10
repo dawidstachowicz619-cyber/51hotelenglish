@@ -6,7 +6,7 @@ import { UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getHotelDepartments } from "@/lib/hr/hotel-department-storage";
 import { getTotalFrontDeskLessons } from "@/lib/hr/lesson-totals";
-import { addHotelEmployee } from "@/lib/hr/roster-storage";
+import { cloudAddEmployee } from "@/lib/hr/roster-api";
 import type { EmployeeDepartment, EmployeeLearningRecord } from "@/lib/types/hr-admin";
 import { PROBATION_DAYS_DEFAULT } from "@/lib/types/learning-record";
 
@@ -59,7 +59,7 @@ export function EmployeeAddDialog({
     onClose();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -91,7 +91,7 @@ export function EmployeeAddDialog({
       isImported: true,
     };
 
-    const result = addHotelEmployee(hotel, record);
+    const result = await cloudAddEmployee(hotel, record);
     setLoading(false);
 
     if (!result.ok) {
@@ -111,7 +111,7 @@ export function EmployeeAddDialog({
           <div>
             <h2 className="font-display text-xl text-foreground">添加员工</h2>
             <p className="mt-1 text-sm font-semibold text-muted-foreground">
-              填写部门、职位、姓名、手机号
+              填写部门、职位、姓名、手机号。学员须用相同手机号登录后才能解锁全部课程。
             </p>
           </div>
           <button

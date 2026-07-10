@@ -5,7 +5,6 @@ const footerLinks = {
     { href: "/assessment", label: "CEFR 水平测评" },
     { href: "/leaderboard", label: "排行榜" },
     { href: "/courses", label: "场景课程" },
-    { href: "/ai-coach", label: "AI 陪练" },
     { href: "/courses/front-desk", label: "前厅英语" },
     { href: "/courses#fnb", label: "餐饮英语" },
   ],

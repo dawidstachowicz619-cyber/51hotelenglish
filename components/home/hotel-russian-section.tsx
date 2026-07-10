@@ -23,7 +23,7 @@ export function HotelRussianSection() {
         <div className="mx-auto max-w-3xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border-2 border-[#D52B1E]/25 bg-white px-4 py-1.5 text-sm font-bold text-[#B91C1C]">
             <Languages className="size-4" />
-            通过中文学习俄语 · 中俄英三语
+            手机 H5 · 通过中文学习俄语
           </div>
           <h2 className="mt-5 font-display text-3xl text-foreground sm:text-4xl">
             酒店俄语：单词、句子、对话、场景练习
