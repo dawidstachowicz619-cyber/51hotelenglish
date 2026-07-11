@@ -1,19 +1,13 @@
 import { NextResponse } from "next/server";
 
+import { verifyPlatformAdminRequest } from "@/lib/auth/platform-admin-auth";
 import { isCloudStorageEnabled } from "@/lib/db/config";
 import { EXPORT_RETENTION_VERSIONS } from "@/lib/exports/build-learning-export";
 import { formatExportSize, listLearningExports } from "@/lib/exports/export-storage";
 import { runDailyLearningExport } from "@/lib/exports/run-daily-export";
 
-function assertPlatformAdmin(request: Request): boolean {
-  return (
-    request.headers.get("x-platform-admin-password") ===
-    process.env.PLATFORM_ADMIN_PASSWORD
-  );
-}
-
 export async function GET(request: Request) {
-  if (!assertPlatformAdmin(request)) {
+  if (!verifyPlatformAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -37,7 +31,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!assertPlatformAdmin(request)) {
+  if (!verifyPlatformAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

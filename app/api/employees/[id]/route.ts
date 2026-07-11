@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { verifyPlatformAdminPassword } from "@/lib/auth/platform-admin-auth";
 import { isCloudStorageEnabled } from "@/lib/db/config";
 import { getEmployeeById } from "@/lib/db/repositories/employees";
 
@@ -14,7 +15,7 @@ export async function GET(_request: Request, { params }: Params) {
   const adminPassword = _request.headers.get("x-platform-admin-password");
   const hrCookie = _request.headers.get("cookie")?.includes("51he_hr_session");
 
-  if (!hrCookie && adminPassword !== process.env.PLATFORM_ADMIN_PASSWORD) {
+  if (!hrCookie && !verifyPlatformAdminPassword(adminPassword)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { verifyPlatformAdminPassword } from "@/lib/auth/platform-admin-auth";
 import {
   createHrSessionToken,
   hashPassword,
@@ -58,7 +59,7 @@ export async function PUT(request: Request) {
   }
 
   const adminPassword = request.headers.get("x-platform-admin-password");
-  if (adminPassword !== process.env.PLATFORM_ADMIN_PASSWORD) {
+  if (!verifyPlatformAdminPassword(adminPassword)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

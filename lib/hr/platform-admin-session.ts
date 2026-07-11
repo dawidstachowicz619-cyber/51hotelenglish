@@ -9,7 +9,9 @@ export function loadPlatformAdminSession(): PlatformAdminSession | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(PLATFORM_ADMIN_SESSION_KEY);
-    return raw ? (JSON.parse(raw) as PlatformAdminSession) : null;
+    const password = sessionStorage.getItem(PLATFORM_ADMIN_PASSWORD_KEY);
+    if (!raw || !password) return null;
+    return JSON.parse(raw) as PlatformAdminSession;
   } catch {
     return null;
   }

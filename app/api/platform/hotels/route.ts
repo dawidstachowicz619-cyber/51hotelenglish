@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { verifyPlatformAdminRequest } from "@/lib/auth/platform-admin-auth";
 import { isCloudStorageEnabled } from "@/lib/db/config";
 import {
   listAllHotelHrPermissions,
@@ -9,18 +10,11 @@ import {
 } from "@/lib/db/repositories/hr-permissions";
 import type { HotelHrPermissions } from "@/lib/types/hr-permissions";
 
-function assertPlatformAdmin(request: Request): boolean {
-  return (
-    request.headers.get("x-platform-admin-password") ===
-    process.env.PLATFORM_ADMIN_PASSWORD
-  );
-}
-
 export async function GET(request: Request) {
   if (!isCloudStorageEnabled()) {
     return NextResponse.json({ error: "Cloud storage disabled" }, { status: 503 });
   }
-  if (!assertPlatformAdmin(request)) {
+  if (!verifyPlatformAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -38,7 +32,7 @@ export async function POST(request: Request) {
   if (!isCloudStorageEnabled()) {
     return NextResponse.json({ error: "Cloud storage disabled" }, { status: 503 });
   }
-  if (!assertPlatformAdmin(request)) {
+  if (!verifyPlatformAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

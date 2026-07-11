@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
 
+import { verifyPlatformAdminRequest } from "@/lib/auth/platform-admin-auth";
 import { readLearningExport } from "@/lib/exports/export-storage";
-
-function assertPlatformAdmin(request: Request): boolean {
-  return (
-    request.headers.get("x-platform-admin-password") ===
-    process.env.PLATFORM_ADMIN_PASSWORD
-  );
-}
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
 export async function GET(request: Request, context: RouteContext) {
-  if (!assertPlatformAdmin(request)) {
+  if (!verifyPlatformAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -26,8 +26,8 @@ export function LearningDataExportPanel() {
     setLoading(true);
     setError(null);
     const data = await fetchLearningExports();
-    if (!data) {
-      setError("加载失败，请确认已使用平台管理员密码登录");
+    if ("error" in data) {
+      setError(data.error);
       setExports([]);
       setLoading(false);
       return;

@@ -225,23 +225,39 @@ export type LearningExportListItem = {
   createdAt: string;
 };
 
-export async function fetchLearningExports(): Promise<{
-  exports: LearningExportListItem[];
-  retentionVersions: number;
-  cloudEnabled: boolean;
-  autoSchedule: string;
-  timezone: string;
-} | null> {
+export async function fetchLearningExports(): Promise<
+  | {
+      exports: LearningExportListItem[];
+      retentionVersions: number;
+      cloudEnabled: boolean;
+      autoSchedule: string;
+      timezone: string;
+    }
+  | { error: string }
+> {
   const res = await fetch("/api/platform/learning-exports", {
     headers: platformHeaders(),
   });
-  if (!res.ok) return null;
-  return (await res.json()) as {
-    exports: LearningExportListItem[];
-    retentionVersions: number;
-    cloudEnabled: boolean;
-    autoSchedule: string;
-    timezone: string;
+  const data = (await res.json().catch(() => ({}))) as {
+    exports?: LearningExportListItem[];
+    retentionVersions?: number;
+    cloudEnabled?: boolean;
+    autoSchedule?: string;
+    timezone?: string;
+    error?: string;
+  };
+  if (!res.ok) {
+    if (res.status === 401) {
+      return { error: "认证失败，请点击右上角「退出登录」后重新输入管理员密码" };
+    }
+    return { error: data.error ?? "加载失败" };
+  }
+  return {
+    exports: data.exports ?? [],
+    retentionVersions: data.retentionVersions ?? 30,
+    cloudEnabled: data.cloudEnabled ?? false,
+    autoSchedule: data.autoSchedule ?? "",
+    timezone: data.timezone ?? "Asia/Shanghai",
   };
 }
 
@@ -258,7 +274,12 @@ export async function triggerLearningExportNow(): Promise<
     snapshot?: { exportDate: string; sizeLabel: string };
     error?: string;
   };
-  if (!res.ok) return { error: data.error ?? "打包失败" };
+  if (!res.ok) {
+    if (res.status === 401) {
+      return { error: "认证失败，请退出后重新登录" };
+    }
+    return { error: data.error ?? "打包失败" };
+  }
   return {
     ok: true,
     exportDate: data.snapshot?.exportDate ?? "",

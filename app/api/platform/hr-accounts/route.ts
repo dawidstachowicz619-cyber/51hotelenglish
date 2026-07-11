@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { verifyPlatformAdminRequest } from "@/lib/auth/platform-admin-auth";
 import { hashPassword } from "@/lib/auth/session";
 import { isCloudStorageEnabled } from "@/lib/db/config";
 import {
@@ -13,13 +14,6 @@ import type {
   CreateHrAdminAccountInput,
   UpdateHrAdminAccountInput,
 } from "@/lib/types/hr-admin-account";
-
-function assertPlatformAdmin(request: Request): boolean {
-  return (
-    request.headers.get("x-platform-admin-password") ===
-    process.env.PLATFORM_ADMIN_PASSWORD
-  );
-}
 
 function validatePhone(phone: string | undefined): string | null {
   if (!phone?.trim()) return null;
@@ -56,7 +50,7 @@ export async function GET(request: Request) {
   if (!isCloudStorageEnabled()) {
     return NextResponse.json({ error: "Cloud storage disabled" }, { status: 503 });
   }
-  if (!assertPlatformAdmin(request)) {
+  if (!verifyPlatformAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -78,7 +72,7 @@ export async function POST(request: Request) {
   if (!isCloudStorageEnabled()) {
     return NextResponse.json({ error: "Cloud storage disabled" }, { status: 503 });
   }
-  if (!assertPlatformAdmin(request)) {
+  if (!verifyPlatformAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -107,7 +101,7 @@ export async function PATCH(request: Request) {
   if (!isCloudStorageEnabled()) {
     return NextResponse.json({ error: "Cloud storage disabled" }, { status: 503 });
   }
-  if (!assertPlatformAdmin(request)) {
+  if (!verifyPlatformAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -141,7 +135,7 @@ export async function DELETE(request: Request) {
   if (!isCloudStorageEnabled()) {
     return NextResponse.json({ error: "Cloud storage disabled" }, { status: 503 });
   }
-  if (!assertPlatformAdmin(request)) {
+  if (!verifyPlatformAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
