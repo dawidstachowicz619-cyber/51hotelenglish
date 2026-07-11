@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/learning-data-export",
+      "schedule": "0 18 * * *"
+    }
+  ]
+}

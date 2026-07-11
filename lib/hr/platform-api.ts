@@ -25,10 +25,11 @@ import type {
   UpdateHrAdminAccountInput,
 } from "@/lib/types/hr-admin-account";
 import type { HotelHrPermissions, HrPermissionKey } from "@/lib/types/hr-permissions";
+import { PLATFORM_ADMIN_PASSWORD_KEY } from "@/lib/types/hr-permissions";
 
 function platformPassword(): string | null {
   if (typeof window === "undefined") return null;
-  return sessionStorage.getItem("51he-platform-admin-session");
+  return sessionStorage.getItem(PLATFORM_ADMIN_PASSWORD_KEY);
 }
 
 function platformHeaders(): HeadersInit {
@@ -203,6 +204,82 @@ export async function cloudDeleteHrAdminAccount(
   if (!res.ok) return { error: data.error ?? "删除失败" };
   window.dispatchEvent(new Event("hr-admin-accounts-updated"));
   return { ok: true };
+}
+
+export type LearningExportListItem = {
+  id: string;
+  exportDate: string;
+  versionNo: number;
+  storagePath: string;
+  sizeBytes: number;
+  sizeLabel: string;
+  rowCounts: {
+    hotels: number;
+    employees: number;
+    learnerProfiles: number;
+    learningProgress: number;
+    learningHistory: number;
+    hotelHrPermissions: number;
+    hrAdminAccounts: number;
+  };
+  createdAt: string;
+};
+
+export async function fetchLearningExports(): Promise<{
+  exports: LearningExportListItem[];
+  retentionVersions: number;
+  cloudEnabled: boolean;
+  autoSchedule: string;
+  timezone: string;
+} | null> {
+  const res = await fetch("/api/platform/learning-exports", {
+    headers: platformHeaders(),
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as {
+    exports: LearningExportListItem[];
+    retentionVersions: number;
+    cloudEnabled: boolean;
+    autoSchedule: string;
+    timezone: string;
+  };
+}
+
+export async function triggerLearningExportNow(): Promise<
+  | { ok: true; exportDate: string; sizeLabel: string }
+  | { error: string }
+> {
+  const res = await fetch("/api/platform/learning-exports", {
+    method: "POST",
+    headers: platformHeaders(),
+  });
+  const data = (await res.json()) as {
+    ok?: boolean;
+    snapshot?: { exportDate: string; sizeLabel: string };
+    error?: string;
+  };
+  if (!res.ok) return { error: data.error ?? "打包失败" };
+  return {
+    ok: true,
+    exportDate: data.snapshot?.exportDate ?? "",
+    sizeLabel: data.snapshot?.sizeLabel ?? "",
+  };
+}
+
+export async function downloadLearningExport(snapshotId: string, exportDate: string): Promise<void> {
+  const res = await fetch(`/api/platform/learning-exports/${snapshotId}`, {
+    headers: platformHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error("下载失败");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `learning-data-${exportDate}.zip`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 // Re-export local setters for non-cloud fallback used by platform dashboard

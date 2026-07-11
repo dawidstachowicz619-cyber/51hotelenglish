@@ -63,6 +63,7 @@ export type PlatformAdminSession = {
 };
 
 export const PLATFORM_ADMIN_SESSION_KEY = "51he-platform-admin-session";
+export const PLATFORM_ADMIN_PASSWORD_KEY = "51he-platform-admin-password";
 
 /** 演示环境平台管理员密码 */
 export const PLATFORM_ADMIN_DEMO_PASSWORD = "platform51";

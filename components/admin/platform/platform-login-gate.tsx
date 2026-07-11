@@ -23,7 +23,7 @@ export function PlatformLoginGate({ onLogin }: PlatformLoginGateProps) {
       setError("密码错误，请重试");
       return;
     }
-    savePlatformAdminSession();
+    savePlatformAdminSession(password);
     onLogin();
   };
 

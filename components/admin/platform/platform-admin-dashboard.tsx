@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { HotelHrAccountsPanel } from "@/components/admin/platform/hotel-hr-accounts-panel";
+import { LearningDataExportPanel } from "@/components/admin/platform/learning-data-export-panel";
 import { PlatformLoginGate } from "@/components/admin/platform/platform-login-gate";
 import { Button } from "@/components/ui/button";
 import {
@@ -232,6 +233,8 @@ export function PlatformAdminDashboard() {
           })}
         </div>
       </div>
+
+      <LearningDataExportPanel />
 
       <div className="card-elevated mt-6 p-6">
         <h2 className="font-display text-lg text-foreground">添加合作酒店</h2>

@@ -120,6 +120,107 @@
   }
 }
 
+@keyframes dining-catch-fall {
+  0% {
+    top: -7rem;
+    transform: translateX(-50%) scale(0.92);
+  }
+  100% {
+    top: calc(100% - 1rem);
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+.dining-catch-fall-item {
+  transform: translateX(-50%);
+  will-change: top, transform;
+}
+
+@keyframes dining-catch-mascot-jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(calc(-1 * min(36vh, 220px)));
+  }
+  50% {
+    transform: translateY(calc(-1 * min(36vh, 220px)));
+  }
+}
+
+.dining-catch-mascot-jump {
+  animation: dining-catch-mascot-jump 0.72s cubic-bezier(0.33, 0, 0.2, 1) forwards;
+}
+
+@keyframes dining-catch-block-bump {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  35% {
+    transform: translateX(-50%) translateY(10px);
+  }
+  55% {
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+
+@keyframes dining-catch-block-pop {
+  0% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: translateX(-50%) scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(0.85) translateY(-24px);
+    opacity: 0;
+  }
+}
+
+@keyframes dining-catch-block-shake {
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(0deg);
+  }
+  20% {
+    transform: translateX(calc(-50% - 6px)) rotate(-3deg);
+  }
+  40% {
+    transform: translateX(calc(-50% + 6px)) rotate(3deg);
+  }
+  60% {
+    transform: translateX(calc(-50% - 4px)) rotate(-2deg);
+  }
+  80% {
+    transform: translateX(calc(-50% + 4px)) rotate(2deg);
+  }
+}
+
+.dining-catch-block-bump {
+  animation: dining-catch-block-bump 0.35s ease-out;
+}
+
+.dining-catch-block-pop {
+  animation: dining-catch-block-pop 0.55s ease-out forwards;
+}
+
+.dining-catch-block-shake {
+  animation: dining-catch-block-shake 0.45s ease-in-out;
+}
+
+.dining-catch-h5 {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.dining-catch-h5 button {
+  -webkit-tap-highlight-color: transparent;
+}
+
 @media print {
   body * {
     visibility: hidden;
