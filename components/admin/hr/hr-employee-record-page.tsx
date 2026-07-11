@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
-import { EmployeeEditDialog } from "@/components/admin/hr/employee-edit-dialog";
 import { EmployeeLearningRecordView } from "@/components/admin/hr/employee-learning-record-view";
 import { HrLoginGate } from "@/components/admin/hr/hr-login-gate";
 import { Button } from "@/components/ui/button";
@@ -11,9 +10,13 @@ import { useHrPermissions } from "@/hooks/use-hr-permissions";
 import { decodeEmployeeIdParam } from "@/lib/hr/employee-record-path";
 import { isHotelHrAccessEnabled } from "@/lib/hr/hotel-hr-permissions";
 import { loadHrSession } from "@/lib/hr/hr-session";
-import { fetchHotelEmployees, cloudRemoveEmployee } from "@/lib/hr/roster-api";
+import {
+  fetchHotelEmployees,
+  cloudRemoveEmployee,
+  cloudUpdateEmployee,
+} from "@/lib/hr/roster-api";
 import { syncCurrentUserToRoster } from "@/lib/hr/sync-employee";
-import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
+import type { EmployeeLearningRecord, EmployeeUpdatePatch } from "@/lib/types/hr-admin";
 
 type Props = {
   employeeIdParam: string;
@@ -24,7 +27,6 @@ export function HrEmployeeRecordPage({ employeeIdParam }: Props) {
   const [hotel, setHotel] = useState<string | null>(null);
   const [employees, setEmployees] = useState<EmployeeLearningRecord[]>([]);
   const [employee, setEmployee] = useState<EmployeeLearningRecord | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
 
   const refresh = useCallback(() => {
     syncCurrentUserToRoster();
@@ -68,6 +70,18 @@ export function HrEmployeeRecordPage({ employeeIdParam }: Props) {
     });
   };
 
+  const handleSave = async (patch: EmployeeUpdatePatch) => {
+    if (!hotel || !employee) {
+      return { ok: false as const, error: "未找到员工" };
+    }
+    const result = await cloudUpdateEmployee(hotel, employee.id, patch);
+    if (!result.ok) {
+      return { ok: false as const, error: result.error };
+    }
+    refresh();
+    return { ok: true as const };
+  };
+
   if (!hotel) {
     return <HrLoginGate onLogin={(h) => setHotel(h)} />;
   }
@@ -95,23 +109,13 @@ export function HrEmployeeRecordPage({ employeeIdParam }: Props) {
   }
 
   return (
-    <>
-      <EmployeeLearningRecordView
-        employee={employee}
-        backHref="/admin/hr"
-        allEmployees={employees}
-        onEdit={can("employees") ? () => setEditOpen(true) : undefined}
-        onDelete={can("employees") ? handleDelete : undefined}
-        canAssignCourses={can("catalog")}
-      />
-
-      <EmployeeEditDialog
-        hotel={hotel}
-        employee={employee}
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        onSaved={refresh}
-      />
-    </>
+    <EmployeeLearningRecordView
+      employee={employee}
+      backHref="/admin/hr"
+      allEmployees={employees}
+      onSave={can("employees") ? handleSave : undefined}
+      onDelete={can("employees") ? handleDelete : undefined}
+      canAssignCourses={can("catalog")}
+    />
   );
 }

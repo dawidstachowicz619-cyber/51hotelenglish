@@ -1,46 +1,134 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Pencil, Printer, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Printer, Save, Trash2, X } from "lucide-react";
 
 import { EmployeeCourseAssignPanel } from "@/components/admin/hr/employee-course-assign-panel";
 import { EmployeeCourseStatsTable } from "@/components/admin/hr/employee-course-stats-table";
 import { EmployeeLearningHistoryList } from "@/components/admin/hr/employee-learning-history-list";
 import { ProbationReportDialog } from "@/components/admin/hr/probation-report-dialog";
 import { Button } from "@/components/ui/button";
-import { getDepartmentLabel } from "@/lib/hr/hotel-department-storage";
+import { getDepartmentLabel, getHotelDepartments } from "@/lib/hr/hotel-department-storage";
 import {
   buildProbationLearningReport,
   formatReportDate,
 } from "@/lib/hr/learning-record-builder";
-import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
+import type {
+  EmployeeDepartment,
+  EmployeeLearningRecord,
+  EmployeeUpdatePatch,
+} from "@/lib/types/hr-admin";
 import {
   ASK_SHORT,
   LEARNING_PHASE_LABELS,
+  PROBATION_DAYS_DEFAULT,
 } from "@/lib/types/learning-record";
+
+type EmployeeDraft = {
+  nickname: string;
+  role: string;
+  department: EmployeeDepartment;
+  status: EmployeeLearningRecord["status"];
+  hireDate: string;
+};
 
 type Props = {
   employee: EmployeeLearningRecord;
   backHref: string;
   backLabel?: string;
   allEmployees?: EmployeeLearningRecord[];
-  onEdit?: () => void;
+  onSave?: (
+    patch: EmployeeUpdatePatch
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
   onDelete?: () => void;
   canAssignCourses?: boolean;
 };
+
+function draftFromEmployee(employee: EmployeeLearningRecord): EmployeeDraft {
+  return {
+    nickname: employee.nickname,
+    role: employee.role,
+    department: employee.department,
+    status: employee.status,
+    hireDate: employee.hireDate?.slice(0, 10) ?? "",
+  };
+}
+
+function patchFromDraft(draft: EmployeeDraft): EmployeeUpdatePatch {
+  const patch: EmployeeUpdatePatch = {
+    nickname: draft.nickname.trim(),
+    role: draft.role.trim(),
+    department: draft.department,
+    status: draft.status,
+  };
+  if (draft.hireDate) {
+    patch.hireDate = new Date(draft.hireDate).toISOString();
+    const probation = new Date(draft.hireDate);
+    probation.setDate(probation.getDate() + PROBATION_DAYS_DEFAULT);
+    patch.probationEndDate = probation.toISOString();
+  } else {
+    patch.hireDate = null;
+    patch.probationEndDate = null;
+  }
+  return patch;
+}
 
 export function EmployeeLearningRecordView({
   employee,
   backHref,
   backLabel = "返回员工列表",
   allEmployees = [],
-  onEdit,
+  onSave,
   onDelete,
   canAssignCourses = false,
 }: Props) {
   const [reportOpen, setReportOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<EmployeeDraft>(() => draftFromEmployee(employee));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const departments = getHotelDepartments(employee.hotel);
   const report = buildProbationLearningReport(employee);
+
+  useEffect(() => {
+    setDraft(draftFromEmployee(employee));
+    setEditing(false);
+    setSaveError(null);
+  }, [employee]);
+
+  const handleStartEdit = () => {
+    setDraft(draftFromEmployee(employee));
+    setSaveError(null);
+    setEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setDraft(draftFromEmployee(employee));
+    setSaveError(null);
+    setEditing(false);
+  };
+
+  const handleSave = async () => {
+    if (!onSave) return;
+    if (!draft.nickname.trim()) {
+      setSaveError("姓名为空");
+      return;
+    }
+    if (!draft.role.trim()) {
+      setSaveError("职位为空");
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    const result = await onSave(patchFromDraft(draft));
+    setSaving(false);
+    if (!result.ok) {
+      setSaveError(result.error);
+      return;
+    }
+    setEditing(false);
+  };
 
   return (
     <>
@@ -65,8 +153,20 @@ export function EmployeeLearningRecordView({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {onEdit && (
-              <Button variant="outline" onClick={onEdit}>
+            {onSave && editing && (
+              <>
+                <Button onClick={handleSave} disabled={saving}>
+                  <Save className="size-4" />
+                  {saving ? "保存中…" : "保存"}
+                </Button>
+                <Button variant="outline" onClick={handleCancelEdit} disabled={saving}>
+                  <X className="size-4" />
+                  取消
+                </Button>
+              </>
+            )}
+            {onSave && !editing && (
+              <Button variant="outline" onClick={handleStartEdit}>
                 <Pencil className="size-4" />
                 编辑员工
               </Button>
@@ -78,12 +178,82 @@ export function EmployeeLearningRecordView({
           </div>
         </div>
 
+        {saveError && (
+          <p className="mt-3 rounded-xl bg-red/10 px-3 py-2 text-sm font-bold text-red">
+            {saveError}
+          </p>
+        )}
+
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <DetailItem label="职位" value={employee.role} />
-          <DetailItem label="部门" value={getDepartmentLabel(employee.hotel, employee.department)} />
-          <DetailItem label="手机号" value={employee.phone || "—"} />
-          <DetailItem label="入职日期" value={formatReportDate(report.hireDate)} />
-          <DetailItem label="试用期至" value={formatReportDate(report.probationEndDate)} />
+          {editing ? (
+            <>
+              <EditField label="姓名">
+                <input
+                  value={draft.nickname}
+                  onChange={(e) => setDraft((d) => ({ ...d, nickname: e.target.value }))}
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm font-bold"
+                />
+              </EditField>
+              <EditField label="职位">
+                <input
+                  value={draft.role}
+                  onChange={(e) => setDraft((d) => ({ ...d, role: e.target.value }))}
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm font-bold"
+                />
+              </EditField>
+              <EditField label="部门">
+                <select
+                  value={draft.department}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, department: e.target.value as EmployeeDepartment }))
+                  }
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm font-bold"
+                >
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </EditField>
+              <DetailItem label="手机号" value={employee.phone || "—"} />
+              <EditField label="状态">
+                <select
+                  value={draft.status}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      status: e.target.value as EmployeeLearningRecord["status"],
+                    }))
+                  }
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm font-bold"
+                >
+                  <option value="new">新学员</option>
+                  <option value="active">活跃</option>
+                  <option value="inactive">未活跃</option>
+                </select>
+              </EditField>
+              <EditField label="入职日期">
+                <input
+                  type="date"
+                  value={draft.hireDate}
+                  onChange={(e) => setDraft((d) => ({ ...d, hireDate: e.target.value }))}
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm font-bold"
+                />
+              </EditField>
+            </>
+          ) : (
+            <>
+              <DetailItem label="职位" value={employee.role} />
+              <DetailItem
+                label="部门"
+                value={getDepartmentLabel(employee.hotel, employee.department)}
+              />
+              <DetailItem label="手机号" value={employee.phone || "—"} />
+              <DetailItem label="入职日期" value={formatReportDate(report.hireDate)} />
+              <DetailItem label="试用期至" value={formatReportDate(report.probationEndDate)} />
+            </>
+          )}
           <DetailItem label="CEFR 等级" value={employee.cefrLevel} />
           <DetailItem
             label="测评最高分"
@@ -207,6 +377,17 @@ function DetailItem({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-1 font-extrabold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function EditField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border-2 border-primary/30 bg-white px-4 py-3">
+      <p className="text-[10px] font-extrabold uppercase text-muted-foreground">
+        {label}
+      </p>
+      <div className="mt-1">{children}</div>
     </div>
   );
 }
