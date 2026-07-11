@@ -10,6 +10,7 @@ import { HrDepartmentSettings } from "@/components/admin/hr/hr-department-settin
 import { HrTrainingUpload } from "@/components/admin/hr/hr-training-upload";
 import { DepartmentBreakdown, DepartmentRanking, LevelBreakdown } from "@/components/admin/hr/hr-charts";
 import { EmployeeAddDialog } from "@/components/admin/hr/employee-add-dialog";
+import { EmployeeEditDialog } from "@/components/admin/hr/employee-edit-dialog";
 import { EmployeeImportDialog } from "@/components/admin/hr/employee-import-dialog";
 import { EmployeeTable } from "@/components/admin/hr/employee-table";
 import { HotelStatsCards } from "@/components/admin/hr/hotel-stats-cards";
@@ -34,6 +35,8 @@ export function HrAdminDashboard() {
   const [employees, setEmployees] = useState<EmployeeLearningRecord[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<EmployeeLearningRecord | null>(null);
 
   const refresh = useCallback(() => {
     syncCurrentUserToRoster();
@@ -250,6 +253,10 @@ export function HrAdminDashboard() {
                   : undefined
               }
               onDelete={handleDeleteEmployee}
+              onEdit={(emp) => {
+                setEditingEmployee(emp);
+                setEditOpen(true);
+              }}
             />
           ) : (
             <HrAccessDenied hotel={hotel} reason="permission" permission="employees" />
@@ -271,6 +278,17 @@ export function HrAdminDashboard() {
             open={importOpen}
             onClose={() => setImportOpen(false)}
             onImported={refresh}
+          />
+
+          <EmployeeEditDialog
+            hotel={hotel}
+            employee={editingEmployee}
+            open={editOpen}
+            onClose={() => {
+              setEditOpen(false);
+              setEditingEmployee(null);
+            }}
+            onSaved={refresh}
           />
         </>
       )}

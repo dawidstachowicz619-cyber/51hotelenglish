@@ -2,7 +2,7 @@ import { employeeRowToRecord, learningRecordToEmployeeRow } from "@/lib/db/mappe
 import { ensureHotel, findHotelById, findHotelByName } from "@/lib/db/repositories/hotels";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { EmployeeRow } from "@/lib/supabase/database.types";
-import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
+import type { EmployeeLearningRecord, EmployeeUpdatePatch } from "@/lib/types/hr-admin";
 
 async function hotelNameForRow(row: EmployeeRow): Promise<string> {
   if (!row.hotel_id) return "";
@@ -153,6 +153,52 @@ export async function bulkImportEmployees(
     if (result.ok) added += 1;
   }
   return added;
+}
+
+export async function updateEmployee(
+  hotelName: string,
+  employeeId: string,
+  patch: EmployeeUpdatePatch
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (patch.nickname !== undefined && !patch.nickname.trim()) {
+    return { ok: false, error: "姓名为空" };
+  }
+  if (patch.role !== undefined && !patch.role.trim()) {
+    return { ok: false, error: "职位为空" };
+  }
+
+  const hotel = await findHotelByName(hotelName.trim());
+  if (!hotel) return { ok: false, error: "酒店不存在" };
+
+  const db = getSupabaseAdmin();
+  const { data: row, error: findError } = await db
+    .from("employees")
+    .select("*")
+    .eq("hotel_id", hotel.id)
+    .or(`id.eq.${employeeId},legacy_id.eq.${employeeId},learner_profile_id.eq.${employeeId}`)
+    .maybeSingle();
+  if (findError) throw findError;
+  if (!row) return { ok: false, error: "员工不存在" };
+
+  const updatePatch: Partial<EmployeeRow> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (patch.nickname !== undefined) updatePatch.nickname = patch.nickname.trim();
+  if (patch.role !== undefined) updatePatch.role = patch.role.trim();
+  if (patch.department !== undefined) updatePatch.department = patch.department;
+  if (patch.status !== undefined) updatePatch.status = patch.status;
+  if (patch.hireDate !== undefined) {
+    updatePatch.hire_date = patch.hireDate ? patch.hireDate.slice(0, 10) : null;
+  }
+  if (patch.probationEndDate !== undefined) {
+    updatePatch.probation_end_date = patch.probationEndDate
+      ? patch.probationEndDate.slice(0, 10)
+      : null;
+  }
+
+  const { error } = await db.from("employees").update(updatePatch).eq("id", row.id);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
 
 export async function getEmployeeById(

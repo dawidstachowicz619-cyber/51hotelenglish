@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Printer, Trash2 } from "lucide-react";
 
+import { EmployeeCourseAssignPanel } from "@/components/admin/hr/employee-course-assign-panel";
 import { EmployeeCourseStatsTable } from "@/components/admin/hr/employee-course-stats-table";
 import { EmployeeLearningHistoryList } from "@/components/admin/hr/employee-learning-history-list";
 import { ProbationReportDialog } from "@/components/admin/hr/probation-report-dialog";
@@ -23,14 +24,20 @@ type Props = {
   employee: EmployeeLearningRecord;
   backHref: string;
   backLabel?: string;
+  allEmployees?: EmployeeLearningRecord[];
+  onEdit?: () => void;
   onDelete?: () => void;
+  canAssignCourses?: boolean;
 };
 
 export function EmployeeLearningRecordView({
   employee,
   backHref,
   backLabel = "返回员工列表",
+  allEmployees = [],
+  onEdit,
   onDelete,
+  canAssignCourses = false,
 }: Props) {
   const [reportOpen, setReportOpen] = useState(false);
   const report = buildProbationLearningReport(employee);
@@ -57,10 +64,18 @@ export function EmployeeLearningRecordView({
               {employee.isImported && !employee.isLiveUser && " · Excel 导入"}
             </p>
           </div>
-          <Button variant="secondary" onClick={() => setReportOpen(true)}>
-            <Printer className="size-4" />
-            打印试用期档案
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {onEdit && (
+              <Button variant="outline" onClick={onEdit}>
+                <Pencil className="size-4" />
+                编辑员工
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => setReportOpen(true)}>
+              <Printer className="size-4" />
+              打印试用期档案
+            </Button>
+          </div>
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -151,6 +166,16 @@ export function EmployeeLearningRecordView({
         </section>
 
         <EmployeeCourseStatsTable employee={employee} />
+
+        {canAssignCourses && (
+          <EmployeeCourseAssignPanel
+            hotel={employee.hotel}
+            employee={employee}
+            allEmployees={allEmployees.length > 0 ? allEmployees : [employee]}
+            canEdit={canAssignCourses}
+          />
+        )}
+
         <EmployeeLearningHistoryList employeeId={employee.id} />
 
         {onDelete && (

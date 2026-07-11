@@ -7,8 +7,9 @@ import {
   bulkImportEmployees,
   hideEmployee,
   listHotelEmployees,
+  updateEmployee,
 } from "@/lib/db/repositories/employees";
-import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
+import type { EmployeeLearningRecord, EmployeeUpdatePatch } from "@/lib/types/hr-admin";
 
 export async function GET() {
   if (!isCloudStorageEnabled()) {
@@ -41,10 +42,11 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as {
-      action: "add" | "import" | "remove";
+      action: "add" | "import" | "remove" | "update";
       employee?: EmployeeLearningRecord;
       employees?: EmployeeLearningRecord[];
       employeeId?: string;
+      patch?: EmployeeUpdatePatch;
     };
 
     if (body.action === "add" && body.employee) {
@@ -62,6 +64,14 @@ export async function POST(request: Request) {
 
     if (body.action === "remove" && body.employeeId) {
       await hideEmployee(session.hotelName, body.employeeId);
+      return NextResponse.json({ ok: true });
+    }
+
+    if (body.action === "update" && body.employeeId && body.patch) {
+      const result = await updateEmployee(session.hotelName, body.employeeId, body.patch);
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
       return NextResponse.json({ ok: true });
     }
 

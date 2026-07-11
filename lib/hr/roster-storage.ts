@@ -1,6 +1,6 @@
 import { getDemoEmployeesForHotel } from "@/lib/hr/demo-roster";
 import { getAllManagedHotels } from "@/lib/hr/hotel-registry";
-import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
+import type { EmployeeLearningRecord, EmployeeUpdatePatch } from "@/lib/types/hr-admin";
 
 const STORAGE_KEY = "51he-hr-roster";
 const HIDDEN_KEY = "51he-hr-roster-hidden";
@@ -181,6 +181,40 @@ export function addHotelEmployee(
   }
 
   upsertHotelEmployee(key, employee);
+  return { ok: true };
+}
+
+export function updateHotelEmployee(
+  hotel: string,
+  employeeId: string,
+  patch: EmployeeUpdatePatch
+): { ok: true } | { ok: false; error: string } {
+  const key = normalizeHotel(hotel);
+  const employees = getHotelEmployees(key);
+  const existing = employees.find((e) => e.id === employeeId);
+  if (!existing) return { ok: false, error: "员工不存在" };
+
+  if (patch.nickname !== undefined && !patch.nickname.trim()) {
+    return { ok: false, error: "姓名为空" };
+  }
+  if (patch.role !== undefined && !patch.role.trim()) {
+    return { ok: false, error: "职位为空" };
+  }
+
+  const next: EmployeeLearningRecord = {
+    ...existing,
+    nickname: patch.nickname?.trim() ?? existing.nickname,
+    role: patch.role?.trim() ?? existing.role,
+    department: patch.department ?? existing.department,
+    status: patch.status ?? existing.status,
+    hireDate: patch.hireDate === null ? undefined : patch.hireDate ?? existing.hireDate,
+    probationEndDate:
+      patch.probationEndDate === null
+        ? undefined
+        : patch.probationEndDate ?? existing.probationEndDate,
+  };
+
+  upsertHotelEmployee(key, next);
   return { ok: true };
 }
 

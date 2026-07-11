@@ -10,6 +10,15 @@ export const EMPLOYEE_DEPARTMENT_LABELS: Record<string, string> = {
   other: "其他部门",
 };
 
+export type EmployeeUpdatePatch = {
+  nickname?: string;
+  role?: string;
+  department?: EmployeeDepartment;
+  status?: EmployeeLearningRecord["status"];
+  hireDate?: string | null;
+  probationEndDate?: string | null;
+};
+
 export type EmployeeLearningRecord = {
   id: string;
   nickname: string;

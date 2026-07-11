@@ -1,10 +1,11 @@
 import { isCloudSyncActive } from "@/lib/storage/cloud-sync";
-import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
+import type { EmployeeLearningRecord, EmployeeUpdatePatch } from "@/lib/types/hr-admin";
 import {
   addHotelEmployee,
   bulkImportHotelEmployees,
   getHotelEmployees,
   removeHotelEmployee,
+  updateHotelEmployee,
 } from "@/lib/hr/roster-storage";
 
 export async function fetchHotelEmployees(
@@ -73,6 +74,27 @@ export async function cloudRemoveEmployee(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "remove", employeeId }),
   });
+}
+
+export async function cloudUpdateEmployee(
+  hotel: string,
+  employeeId: string,
+  patch: EmployeeUpdatePatch
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isCloudSyncActive()) {
+    return updateHotelEmployee(hotel, employeeId, patch);
+  }
+
+  const res = await fetch("/api/hr/employees", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "update", employeeId, patch }),
+  });
+  const data = (await res.json()) as { error?: string };
+  if (!res.ok) return { ok: false, error: data.error ?? "保存失败" };
+  window.dispatchEvent(new Event("hr-roster-updated"));
+  return { ok: true };
 }
 
 export async function cloudHrLogin(

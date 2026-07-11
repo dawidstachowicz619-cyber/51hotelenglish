@@ -132,6 +132,92 @@ export function getAssignedCatalogCoursesForEmployee(
     );
 }
 
+export function isCourseAssignedToEmployee(
+  hotel: string,
+  catalogCourseId: string,
+  department: EmployeeDepartment,
+  employeeId: string
+): boolean {
+  const assignment = getHotelCourseAssignments(hotel).find(
+    (a) => a.catalogCourseId === catalogCourseId
+  );
+  if (!assignment) return false;
+  return assignmentMatchesEmployee(assignment, department, employeeId);
+}
+
+export function setEmployeeCourseAssignment(
+  hotel: string,
+  catalogCourseId: string,
+  employeeId: string,
+  enabled: boolean,
+  allEmployees: { id: string; department: EmployeeDepartment }[]
+): { ok: true } | { ok: false; error: string } {
+  const employee = allEmployees.find((e) => e.id === employeeId);
+  if (!employee) return { ok: false, error: "员工不存在" };
+
+  const existing = getHotelCourseAssignments(hotel).find(
+    (a) => a.catalogCourseId === catalogCourseId
+  );
+
+  if (enabled) {
+    if (!existing) {
+      return assignCatalogCourse(hotel, catalogCourseId, {
+        assignMode: "employees",
+        employeeIds: [employeeId],
+      });
+    }
+    const mode = resolveAssignMode(existing);
+    if (mode === "all") return { ok: true };
+    if (mode === "department" && existing.department === employee.department) {
+      return { ok: true };
+    }
+    const ids = new Set([...(existing.employeeIds ?? []), employeeId]);
+    return assignCatalogCourse(hotel, catalogCourseId, {
+      assignMode: "employees",
+      employeeIds: [...ids],
+    });
+  }
+
+  if (!existing) return { ok: true };
+  const mode = resolveAssignMode(existing);
+  if (mode === "employees") {
+    const ids = (existing.employeeIds ?? []).filter((id) => id !== employeeId);
+    if (ids.length === 0) {
+      unassignCatalogCourse(hotel, catalogCourseId);
+      return { ok: true };
+    }
+    return assignCatalogCourse(hotel, catalogCourseId, {
+      assignMode: "employees",
+      employeeIds: ids,
+    });
+  }
+  if (mode === "all") {
+    const ids = allEmployees.filter((e) => e.id !== employeeId).map((e) => e.id);
+    if (ids.length === 0) {
+      unassignCatalogCourse(hotel, catalogCourseId);
+      return { ok: true };
+    }
+    return assignCatalogCourse(hotel, catalogCourseId, {
+      assignMode: "employees",
+      employeeIds: ids,
+    });
+  }
+  if (mode === "department") {
+    const ids = allEmployees
+      .filter((e) => e.department === existing.department && e.id !== employeeId)
+      .map((e) => e.id);
+    if (ids.length === 0) {
+      unassignCatalogCourse(hotel, catalogCourseId);
+      return { ok: true };
+    }
+    return assignCatalogCourse(hotel, catalogCourseId, {
+      assignMode: "employees",
+      employeeIds: ids,
+    });
+  }
+  return { ok: true };
+}
+
 export function catalogCourseToTrainingModule(
   course: CatalogCourse,
   hotel: string

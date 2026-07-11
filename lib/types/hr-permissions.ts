@@ -26,7 +26,7 @@ export const HR_PERMISSION_LABELS: Record<
   },
   employees: {
     label: "员工管理",
-    description: "添加、导入、删除员工及查看列表",
+    description: "添加、编辑、导入、删除员工及查看列表",
   },
   departments: {
     label: "部门设置",
@@ -34,7 +34,7 @@ export const HR_PERMISSION_LABELS: Record<
   },
   catalog: {
     label: "课程资源分配",
-    description: "从通用课程资源中心分配课程给员工",
+    description: "从课程库分配课程，支持全员、部门或指定员工",
   },
   training: {
     label: "培训上传",

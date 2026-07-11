@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Search, Trash2 } from "lucide-react";
+import { ChevronRight, Pencil, Search, Trash2 } from "lucide-react";
 
 import { getDepartmentLabel, getHotelDepartments } from "@/lib/hr/hotel-department-storage";
 import type { EmployeeDepartment, EmployeeLearningRecord } from "@/lib/types/hr-admin";
@@ -15,6 +15,7 @@ type EmployeeTableProps = {
   onSelect?: (employee: EmployeeLearningRecord) => void;
   getEmployeeHref?: (employee: EmployeeLearningRecord) => string;
   onDelete?: (employee: EmployeeLearningRecord) => void;
+  onEdit?: (employee: EmployeeLearningRecord) => void;
 };
 
 const STATUS_LABELS = {
@@ -35,6 +36,7 @@ export function EmployeeTable({
   onSelect,
   getEmployeeHref,
   onDelete,
+  onEdit,
 }: EmployeeTableProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -125,7 +127,9 @@ export function EmployeeTable({
               <th className="px-4 py-3">积分</th>
               <th className="px-4 py-3">最近活跃</th>
               {getEmployeeHref && <th className="px-4 py-3 w-10" aria-label="查看" />}
-              {onDelete && <th className="px-4 py-3 w-12" aria-label="操作" />}
+              {(onEdit || onDelete) && (
+                <th className="px-4 py-3 w-20" aria-label="操作" />
+              )}
             </tr>
           </thead>
           <tbody>
@@ -218,7 +222,37 @@ export function EmployeeTable({
                       <ChevronRight className="size-4" />
                     </td>
                   )}
-                  {onDelete && (
+                  {onEdit && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(emp);
+                          }}
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary/10 hover:text-secondary"
+                          aria-label={`编辑 ${emp.nickname}`}
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+                        {onDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(emp);
+                            }}
+                            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red/10 hover:text-red"
+                            aria-label={`删除 ${emp.nickname}`}
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                  {!onEdit && onDelete && (
                     <td className="px-4 py-3">
                       <button
                         type="button"

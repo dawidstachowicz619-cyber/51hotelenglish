@@ -101,7 +101,7 @@ export function HrDepartmentSettings({ hotel }: HrDepartmentSettingsProps) {
           <div>
             <h2 className="font-display text-xl text-foreground">本酒店部门设置</h2>
             <p className="mt-1 text-sm font-semibold text-muted-foreground">
-              自定义组织架构部门，用于员工档案、培训发布与 Grow in Hotel 学习路径
+              添加、编辑、删除部门；用于员工档案、课程分配与学习路径
             </p>
           </div>
         </div>
