@@ -20,7 +20,8 @@ function parseSampleRate(value: string | undefined, format: "wav" | "mp3"): numb
 }
 
 function parseFormat(value: string | undefined): "wav" | "mp3" {
-  return value === "mp3" ? "mp3" : "wav";
+  if (value === "wav") return "wav";
+  return "mp3";
 }
 
 /** 游戏单词用纯文本，避免 CosyVoice 提示词产生杂音 */

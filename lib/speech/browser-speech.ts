@@ -9,6 +9,12 @@ export function isAndroidDevice(): boolean {
   return /Android/i.test(navigator.userAgent);
 }
 
+export function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /Android|iPhone|iPad|iPod|Mobile|HUAWEI|HONOR/i.test(ua);
+}
+
 export function isUnreliableWebSpeech(): boolean {
   if (typeof navigator === "undefined") return true;
   const ua = navigator.userAgent;

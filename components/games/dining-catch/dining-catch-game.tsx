@@ -7,7 +7,6 @@ import { Check, Heart, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playLessonCompleteSound, playSuccessSound } from "@/lib/audio/exercise-sounds";
 import {
-  prefetchGameWordAudio,
   primeGameSpeech,
   prefersCloudGameSpeech,
   setDiningCatchBgmVolume,
@@ -15,6 +14,7 @@ import {
   startDiningCatchBgm,
   stopDiningCatchBgm,
   stopGameSpeech,
+  supportsDiningCatchBgm,
   unlockGameAudioSync,
 } from "@/lib/games/dining-catch/game-audio";
 import { isWeChatBrowser } from "@/lib/speech/browser-speech";
@@ -200,7 +200,7 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
         setScore((s) => s + 1);
         setFeedback(`正确！${item.chinese}`);
         if (!muted) {
-          playSuccessSound();
+          if (supportsDiningCatchBgm()) playSuccessSound();
           void speakGameWord(item.english, "success");
         }
         window.setTimeout(() => setRoundIndex((r) => r + 1), 1200);
@@ -250,10 +250,6 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
       setNeedsTapForAudio(true);
       setAudioHint(null);
 
-      if (prefersCloudGameSpeech()) {
-        prefetchGameWordAudio(target.english, "fall");
-      }
-
       if (!muted && !prefersCloudGameSpeech()) {
         window.setTimeout(() => {
           void speakGameWord(target.english, "fall").then(() => {
@@ -281,7 +277,9 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
         setResult(passed ? "win" : "lose");
         if (passed) {
           completeDiningCatchLevel(level, currentScore);
-          playLessonCompleteSound();
+          if (supportsDiningCatchBgm()) {
+            playLessonCompleteSound();
+          }
         }
         stopDiningCatchBgm();
         return currentScore;
