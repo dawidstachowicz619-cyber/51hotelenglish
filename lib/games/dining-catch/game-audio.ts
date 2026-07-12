@@ -8,12 +8,21 @@ let bgmNodes: {
 } | null = null;
 
 let sharedAudioContext: AudioContext | null = null;
-let htmlAudioEl: HTMLAudioElement | null = null;
+let ttsHtmlAudioEl: HTMLAudioElement | null = null;
+let activeBufferSource: AudioBufferSourceNode | null = null;
+let htmlPlayGeneration = 0;
 
 let speakSession = 0;
 let speechPrimed = false;
 let iosKeepAliveTimer: ReturnType<typeof setInterval> | null = null;
 const ttsPrefetchCache = new Map<string, Promise<Blob | null>>();
+
+function isAbortError(err: unknown): boolean {
+  return (
+    (err instanceof DOMException && err.name === "AbortError") ||
+    (err instanceof Error && err.name === "AbortError")
+  );
+}
 
 function ttsCacheKey(text: string, mode: "fall" | "success"): string {
   return `${mode}:${text.trim().toLowerCase()}`;
@@ -73,9 +82,9 @@ function getSharedAudioContext(): AudioContext | null {
   return sharedAudioContext;
 }
 
-function getHtmlAudioElement(): HTMLAudioElement | null {
+function getTtsHtmlAudioElement(): HTMLAudioElement | null {
   if (typeof document === "undefined") return null;
-  if (!htmlAudioEl) {
+  if (!ttsHtmlAudioEl) {
     const audio = document.createElement("audio");
     audio.setAttribute("playsinline", "true");
     audio.setAttribute("webkit-playsinline", "true");
@@ -83,41 +92,30 @@ function getHtmlAudioElement(): HTMLAudioElement | null {
     audio.preload = "auto";
     audio.style.display = "none";
     document.body.appendChild(audio);
-    htmlAudioEl = audio;
+    ttsHtmlAudioEl = audio;
   }
-  return htmlAudioEl;
+  return ttsHtmlAudioEl;
 }
 
-/** 在用户点击的同一时刻同步解锁音频（微信 / 华为必需，不能放在 await/.then 之后） */
+/** 在用户点击的同一时刻同步解锁音频（仅 Web Audio，避免与 TTS 播放抢同一个 audio 标签） */
 export function unlockGameAudioSync(): void {
   speechPrimed = true;
 
   const ctx = getSharedAudioContext();
-  if (ctx) {
-    if (ctx.state === "suspended") {
-      void ctx.resume();
-    }
-    try {
-      const buffer = ctx.createBuffer(1, 1, 22050);
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
-    } catch {
-      /* ignore */
-    }
+  if (!ctx) return;
+
+  if (ctx.state === "suspended") {
+    void ctx.resume();
   }
 
-  const htmlAudio = getHtmlAudioElement();
-  if (htmlAudio) {
-    htmlAudio.muted = true;
-    htmlAudio.src =
-      "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
-    void htmlAudio.play().finally(() => {
-      htmlAudio.pause();
-      htmlAudio.muted = false;
-      htmlAudio.removeAttribute("src");
-    });
+  try {
+    const buffer = ctx.createBuffer(1, 1, 22050);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.start(0);
+  } catch {
+    /* ignore */
   }
 }
 
@@ -147,11 +145,32 @@ function stopIosSpeechKeepAlive(): void {
   }
 }
 
-function stopHtmlAudio(): void {
-  const htmlAudio = htmlAudioEl;
+function stopActiveWebAudioSource(): void {
+  if (!activeBufferSource) return;
+  try {
+    activeBufferSource.stop();
+  } catch {
+    /* ignore */
+  }
+  activeBufferSource = null;
+}
+
+function stopTtsHtmlAudio(): void {
+  htmlPlayGeneration += 1;
+  const htmlAudio = ttsHtmlAudioEl;
   if (!htmlAudio) return;
+  htmlAudio.onended = null;
+  htmlAudio.onerror = null;
   htmlAudio.pause();
+  if (htmlAudio.src?.startsWith("blob:")) {
+    URL.revokeObjectURL(htmlAudio.src);
+  }
   htmlAudio.removeAttribute("src");
+}
+
+function stopActiveTtsPlayback(): void {
+  stopActiveWebAudioSource();
+  stopTtsHtmlAudio();
 }
 
 function playTone(
@@ -254,47 +273,68 @@ async function playMp3ViaWebAudio(blob: Blob): Promise<void> {
   const arrayBuffer = await blob.arrayBuffer();
   const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
 
+  stopActiveWebAudioSource();
+
   return new Promise((resolve, reject) => {
     const source = ctx.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(ctx.destination);
-    source.onended = () => resolve();
+    activeBufferSource = source;
+
+    source.onended = () => {
+      if (activeBufferSource === source) activeBufferSource = null;
+      resolve();
+    };
+
     try {
       source.start(0);
     } catch (err) {
+      if (activeBufferSource === source) activeBufferSource = null;
       reject(err);
     }
   });
 }
 
 async function playMp3ViaHtmlAudio(blob: Blob): Promise<void> {
-  const htmlAudio = getHtmlAudioElement();
+  const htmlAudio = getTtsHtmlAudioElement();
   if (!htmlAudio) throw new Error("no html audio");
 
-  stopHtmlAudio();
+  stopTtsHtmlAudio();
+  const generation = htmlPlayGeneration;
 
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(blob);
     htmlAudio.src = url;
 
     const cleanup = () => {
-      URL.revokeObjectURL(url);
       htmlAudio.onended = null;
       htmlAudio.onerror = null;
+      if (htmlAudio.src === url) {
+        URL.revokeObjectURL(url);
+        htmlAudio.removeAttribute("src");
+      }
     };
 
-    htmlAudio.onended = () => {
+    const finish = (err?: Error) => {
+      if (generation !== htmlPlayGeneration) {
+        cleanup();
+        resolve();
+        return;
+      }
       cleanup();
-      resolve();
-    };
-    htmlAudio.onerror = () => {
-      cleanup();
-      reject(new Error("html audio play failed"));
+      if (err) reject(err);
+      else resolve();
     };
 
-    void htmlAudio.play().catch((err) => {
-      cleanup();
-      reject(err);
+    htmlAudio.onended = () => finish();
+    htmlAudio.onerror = () => finish(new Error("html audio play failed"));
+
+    void htmlAudio.play().catch((err: unknown) => {
+      if (isAbortError(err)) {
+        finish();
+        return;
+      }
+      finish(err instanceof Error ? err : new Error("html audio play failed"));
     });
   });
 }
@@ -335,7 +375,8 @@ async function speakViaCloudTts(
       }
     }
     return true;
-  } catch {
+  } catch (err) {
+    if (isAbortError(err)) return false;
     return false;
   }
 }
@@ -409,7 +450,7 @@ export async function speakGameWord(
 
   const repeat = mode === "fall" ? 3 : 1;
   const session = ++speakSession;
-  stopHtmlAudio();
+  stopActiveTtsPlayback();
   if (window.speechSynthesis) window.speechSynthesis.cancel();
 
   await ensureAudioContext();
@@ -430,7 +471,7 @@ export async function speakGameWord(
 export function stopGameSpeech(): void {
   speakSession += 1;
   stopIosSpeechKeepAlive();
-  stopHtmlAudio();
+  stopActiveTtsPlayback();
   if (typeof window !== "undefined" && window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
