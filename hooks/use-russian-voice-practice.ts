@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
+import { isUnreliableWebSpeech } from "@/lib/speech/browser-speech";
+
+export { isUnreliableWebSpeech };
 
 type VoiceMode = "recorder" | "webspeech";
 
@@ -39,16 +42,6 @@ function createMediaRecorder(stream: MediaStream): { recorder: MediaRecorder; mi
   }
   const recorder = new MediaRecorder(stream);
   return { recorder, mimeType: recorder.mimeType || "audio/webm" };
-}
-
-/** Web Speech 在 iOS / 微信 / 非 Chrome 上常假启动、无结果 */
-export function isUnreliableWebSpeech(): boolean {
-  if (typeof navigator === "undefined") return true;
-  const ua = navigator.userAgent;
-  if (/MicroMessenger/i.test(ua)) return true;
-  if (/iPhone|iPad|iPod/i.test(ua)) return true;
-  if (/Android/i.test(ua) && !/Chrome\//i.test(ua)) return true;
-  return false;
 }
 
 function pickVoiceMode(): VoiceMode {
