@@ -9,6 +9,19 @@ function emptyProgress(): DiningCatchProgress {
   return { completedLevels: [], bestScores: {} };
 }
 
+export function defaultDiningCatchProgress(): DiningCatchProgress {
+  return emptyProgress();
+}
+
+export function getDiningCatchLevelStatusFromProgress(
+  level: number,
+  progress: DiningCatchProgress
+): "locked" | "current" | "completed" {
+  if (progress.completedLevels.includes(level)) return "completed";
+  if (level <= 1 || progress.completedLevels.includes(level - 1)) return "current";
+  return "locked";
+}
+
 export function loadDiningCatchProgress(): DiningCatchProgress {
   if (typeof window === "undefined") return emptyProgress();
   try {

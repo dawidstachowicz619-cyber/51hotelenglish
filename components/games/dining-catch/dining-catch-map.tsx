@@ -7,15 +7,23 @@ import {
   DINING_CATCH_LEVELS,
   type DiningCatchLevel,
 } from "@/lib/games/dining-catch/levels";
-import { getDiningCatchLevelStatus } from "@/lib/games/dining-catch/progress-storage";
+import {
+  getDiningCatchLevelStatusFromProgress,
+  type DiningCatchProgress,
+} from "@/lib/games/dining-catch/progress-storage";
 import { cn } from "@/lib/utils";
 
 type DiningCatchMapProps = {
   onSelectLevel: (level: number) => void;
   completedCount: number;
+  progress: DiningCatchProgress;
 };
 
-export function DiningCatchMap({ onSelectLevel, completedCount }: DiningCatchMapProps) {
+export function DiningCatchMap({
+  onSelectLevel,
+  completedCount,
+  progress,
+}: DiningCatchMapProps) {
   const percent = Math.round((completedCount / DINING_CATCH_LEVELS.length) * 100);
 
   const zones = useMemo(() => {
@@ -67,7 +75,7 @@ export function DiningCatchMap({ onSelectLevel, completedCount }: DiningCatchMap
             </div>
 
             {group.levels.map((level, idx) => {
-              const status = getDiningCatchLevelStatus(level.level);
+              const status = getDiningCatchLevelStatusFromProgress(level.level, progress);
               const isLeft = idx % 2 === 0;
 
               return (

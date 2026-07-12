@@ -7,10 +7,10 @@ import { DiningCatchGame } from "@/components/games/dining-catch/dining-catch-ga
 import { DiningCatchMap } from "@/components/games/dining-catch/dining-catch-map";
 import { DiningCatchMobileShell } from "@/components/games/dining-catch/dining-catch-mobile-shell";
 import {
+  defaultDiningCatchProgress,
   loadDiningCatchProgress,
   type DiningCatchProgress,
 } from "@/lib/games/dining-catch/progress-storage";
-import { primeGameSpeech, unlockGameAudioSync } from "@/lib/games/dining-catch/game-audio";
 
 type View = "map" | "game";
 
@@ -18,12 +18,16 @@ export function DiningCatchHub() {
   const [view, setView] = useState<View>("map");
   const [activeLevel, setActiveLevel] = useState<number | null>(null);
   const [progress, setProgress] = useState<DiningCatchProgress>(() =>
-    loadDiningCatchProgress()
+    defaultDiningCatchProgress()
   );
 
   const refreshProgress = useCallback(() => {
     setProgress(loadDiningCatchProgress());
   }, []);
+
+  useEffect(() => {
+    refreshProgress();
+  }, [refreshProgress]);
 
   useEffect(() => {
     const onUpdate = () => refreshProgress();
@@ -32,8 +36,6 @@ export function DiningCatchHub() {
   }, [refreshProgress]);
 
   const handleSelectLevel = (level: number) => {
-    unlockGameAudioSync();
-    void primeGameSpeech();
     setActiveLevel(level);
     setView("game");
   };
@@ -74,6 +76,7 @@ export function DiningCatchHub() {
 
         <DiningCatchMap
           completedCount={progress.completedLevels.length}
+          progress={progress}
           onSelectLevel={handleSelectLevel}
         />
       </div>

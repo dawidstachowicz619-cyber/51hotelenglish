@@ -7,17 +7,11 @@ import { Check, Heart, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playLessonCompleteSound, playSuccessSound } from "@/lib/audio/exercise-sounds";
 import {
-  primeGameSpeech,
-  prefersCloudGameSpeech,
   setDiningCatchBgmVolume,
   speakGameWord,
   startDiningCatchBgm,
   stopDiningCatchBgm,
-  stopGameSpeech,
-  supportsDiningCatchBgm,
-  unlockGameAudioSync,
 } from "@/lib/games/dining-catch/game-audio";
-import { isWeChatBrowser } from "@/lib/speech/browser-speech";
 import {
   DINING_CATCH_PASS_SCORE,
   DINING_CATCH_ROUNDS,
@@ -132,11 +126,7 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
   const [prompt, setPrompt] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
-  const [needsTapForAudio, setNeedsTapForAudio] = useState(false);
-  const [audioHint, setAudioHint] = useState<string | null>(null);
   const roundTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const playAreaRef = useRef<HTMLDivElement>(null);
-  const spokeThisRoundRef = useRef(false);
 
   const targetEnglish = useMemo(() => {
     if (!levelConfig || !targetId) return "";
@@ -168,27 +158,9 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
     });
   }, []);
 
-  const playRoundAudio = useCallback(
-    (english: string) => {
-      if (muted || !english) return;
-      spokeThisRoundRef.current = true;
-      setNeedsTapForAudio(false);
-      setAudioHint(null);
-      void speakGameWord(english, "fall").then((ok) => {
-        if (!ok) {
-          spokeThisRoundRef.current = false;
-          setNeedsTapForAudio(true);
-          setAudioHint("发音加载失败，请再点一次喇叭");
-        }
-      });
-    },
-    [muted]
-  );
-
   const handlePick = useCallback(
     (itemId: string, spriteId: string) => {
       if (locked || phase !== "playing" || !targetId || !levelConfig) return;
-      unlockGameAudioSync();
       clearRoundTimer();
       setLocked(true);
 
@@ -200,14 +172,14 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
         setScore((s) => s + 1);
         setFeedback(`正确！${item.chinese}`);
         if (!muted) {
-          if (supportsDiningCatchBgm()) playSuccessSound();
-          void speakGameWord(item.english, "success");
+          playSuccessSound();
+          speakGameWord(item.english, "success");
         }
         window.setTimeout(() => setRoundIndex((r) => r + 1), 1200);
       } else {
         setSpriteStates({ [spriteId]: "wrong" });
         setFeedback("不对，再听一遍");
-        if (!muted && targetEnglish) void speakGameWord(targetEnglish, "fall");
+        if (!muted && targetEnglish) speakGameWord(targetEnglish, "fall");
         setHearts((h) => {
           const next = h - 1;
           if (next <= 0) {
@@ -246,18 +218,10 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
         delay: i * 0.45,
       }));
       setSprites(nextSprites);
-      spokeThisRoundRef.current = false;
-      setNeedsTapForAudio(true);
-      setAudioHint(null);
 
-      if (!muted && !prefersCloudGameSpeech()) {
-        window.setTimeout(() => {
-          void speakGameWord(target.english, "fall").then(() => {
-            spokeThisRoundRef.current = true;
-            setNeedsTapForAudio(false);
-          });
-        }, 200);
-      }
+      window.setTimeout(() => {
+        if (!muted) speakGameWord(target.english, "fall");
+      }, 350);
 
       const maxFallMs =
         Math.max(...nextSprites.map((s) => (s.duration + s.delay) * 1000)) + 600;
@@ -277,9 +241,7 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
         setResult(passed ? "win" : "lose");
         if (passed) {
           completeDiningCatchLevel(level, currentScore);
-          if (supportsDiningCatchBgm()) {
-            playLessonCompleteSound();
-          }
+          playLessonCompleteSound();
         }
         stopDiningCatchBgm();
         return currentScore;
@@ -294,27 +256,8 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
     return () => {
       clearRoundTimer();
       stopDiningCatchBgm();
-      stopGameSpeech();
     };
   }, [clearRoundTimer, muted]);
-
-  useEffect(() => {
-    const el = playAreaRef.current;
-    if (!el || phase !== "playing") return;
-
-    const onFirstTouch = () => {
-      unlockGameAudioSync();
-      void primeGameSpeech();
-      if (!spokeThisRoundRef.current && targetEnglish && !muted) {
-        playRoundAudio(targetEnglish);
-      }
-    };
-
-    el.addEventListener("touchstart", onFirstTouch, { passive: true });
-    return () => {
-      el.removeEventListener("touchstart", onFirstTouch);
-    };
-  }, [phase, roundIndex, targetEnglish, muted, playRoundAudio]);
 
   useEffect(() => {
     setDiningCatchBgmVolume(muted ? 0 : 0.07);
@@ -430,41 +373,10 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
       </div>
 
       <div className="mb-3 shrink-0 rounded-2xl border-2 border-accent/30 bg-white/95 px-4 py-3 text-center shadow-sm">
-        <div className="flex items-center justify-center gap-3">
-          <p className="flex-1 text-lg font-extrabold leading-snug text-foreground">{prompt}</p>
-          <button
-            type="button"
-            disabled={locked || muted || !targetEnglish}
-            onPointerDown={() => {
-              unlockGameAudioSync();
-              void primeGameSpeech();
-            }}
-            onClick={() => {
-              if (targetEnglish) playRoundAudio(targetEnglish);
-            }}
-            className={cn(
-              "flex size-12 shrink-0 items-center justify-center rounded-full border-2 shadow-sm active:scale-95",
-              needsTapForAudio && !muted
-                ? "animate-pulse border-accent bg-accent/15 text-accent"
-                : "border-border bg-white text-primary"
-            )}
-            aria-label="听发音 3 遍"
-          >
-            <Volume2 className="size-6" />
-          </button>
-        </div>
+        <p className="text-lg font-extrabold leading-snug text-foreground">{prompt}</p>
         <p className="mt-1 text-xs font-semibold text-muted-foreground">
           单词从上往下掉 · 显示中文 · 速度 {speedConfig.label}
-          {(needsTapForAudio || prefersCloudGameSpeech()) && !muted && " · 请点喇叭听发音"}
         </p>
-        {isWeChatBrowser() && !muted && (
-          <p className="mt-1 text-xs font-bold text-accent">
-            微信内请点右侧喇叭 🔊 或轻触游戏区域听发音
-          </p>
-        )}
-        {audioHint && !muted && (
-          <p className="mt-1 text-xs font-bold text-red">{audioHint}</p>
-        )}
         {feedback && (
           <p
             className={cn(
@@ -477,10 +389,7 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
         )}
       </div>
 
-      <div
-        ref={playAreaRef}
-        className="relative min-h-0 flex-1 overflow-hidden rounded-3xl border-2 border-[#0039A6]/15 bg-gradient-to-b from-sky-300/90 via-sky-100 to-amber-100/90 shadow-inner"
-      >
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-3xl border-2 border-[#0039A6]/15 bg-gradient-to-b from-sky-300/90 via-sky-100 to-amber-100/90 shadow-inner">
         <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-14 bg-gradient-to-b from-white/55 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-16 bg-gradient-to-t from-amber-200/80 to-transparent" />
 
