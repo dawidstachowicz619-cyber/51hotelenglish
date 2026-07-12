@@ -89,6 +89,103 @@ function voiceScore(voice: SpeechSynthesisVoice, langPrefix: string): number {
   return score;
 }
 
+const ENGLISH_FEMALE_HINTS = [
+  "Samantha",
+  "Karen",
+  "Victoria",
+  "Susan",
+  "Allison",
+  "Ava",
+  "Zira",
+  "Hazel",
+  "Serena",
+  "Fiona",
+  "Kate",
+  "Moira",
+  "Tessa",
+  "Jenny",
+  "Sonia",
+  "Aria",
+  "Google US English Female",
+  "Google UK English Female",
+  "Microsoft Zira",
+  "Microsoft Aria",
+  "Female",
+  "Anna",
+  "Claire",
+  "Bella",
+  "Diana",
+];
+
+const ENGLISH_MALE_HINTS = [
+  "Daniel",
+  "David",
+  "Alex",
+  "Fred",
+  "Tom",
+  "Ralph",
+  "Bruce",
+  "James",
+  "Aaron",
+  "Arthur",
+  "Junior",
+  "Microsoft David",
+  "Microsoft Mark",
+  "Google US English Male",
+  "Male",
+  "Benjamin",
+  "Charles",
+  "benjamin",
+  "charles",
+];
+
+function englishFemaleVoiceScore(
+  voice: SpeechSynthesisVoice,
+  exclude?: SpeechSynthesisVoice | null
+): number {
+  if (exclude && voice.name === exclude.name) return -1000;
+
+  const lang = voice.lang.toLowerCase();
+  if (!lang.startsWith("en")) return -1000;
+
+  let score = 0;
+  const name = voice.name;
+
+  for (const hint of ENGLISH_FEMALE_HINTS) {
+    if (name.includes(hint)) score += 14;
+  }
+  for (const hint of ENGLISH_MALE_HINTS) {
+    if (name.includes(hint)) score -= 30;
+  }
+  for (const hint of AVOID_VOICE_HINTS) {
+    if (name.includes(hint)) score -= 20;
+  }
+
+  if (name.includes("Neural") || name.includes("Natural")) score += 8;
+  if (voice.localService) score += 3;
+  if (name.includes("Google")) score += 4;
+  if (name.includes("Apple") || name.includes("com.apple")) score += 3;
+
+  return score;
+}
+
+/** 优先选择英文女声（餐饮游戏单词朗读） */
+export function pickFemaleEnglishVoice(
+  exclude?: SpeechSynthesisVoice | null
+): SpeechSynthesisVoice | null {
+  if (typeof window === "undefined" || !window.speechSynthesis) return null;
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+
+  const ranked = voices
+    .map((voice) => ({ voice, score: englishFemaleVoiceScore(voice, exclude) }))
+    .filter((item) => item.score > -100)
+    .sort((a, b) => b.score - a.score);
+
+  return ranked[0]?.voice ?? pickNaturalVoice("en-US");
+}
+
 export function pickNaturalVoice(lang: SpeechLang): SpeechSynthesisVoice | null {
   if (typeof window === "undefined" || !window.speechSynthesis) return null;
 

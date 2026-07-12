@@ -1,4 +1,4 @@
-import { pickNaturalVoice } from "@/lib/speech/voice-selection";
+import { pickFemaleEnglishVoice } from "@/lib/speech/voice-selection";
 
 let bgmNodes: {
   ctx: AudioContext;
@@ -96,23 +96,14 @@ export function setDiningCatchBgmVolume(volume: number): void {
 
 let speakSession = 0;
 
-function pickAlternateEnglishVoice(exclude?: SpeechSynthesisVoice | null) {
-  const voices = window.speechSynthesis.getVoices().filter((v) =>
-    v.lang.toLowerCase().startsWith("en")
-  );
-  const alt = voices.find((v) => v.name !== exclude?.name);
-  return alt ?? pickNaturalVoice("en-US");
-}
-
-export function speakGameWord(
+function beginSpeakGameWord(
   text: string,
-  mode: "fall" | "success"
+  mode: "fall" | "success",
+  repeat: number,
+  session: number
 ): void {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-  const repeat = mode === "fall" ? 3 : 1;
-  const session = ++speakSession;
-  window.speechSynthesis.cancel();
+  const femaleVoice = pickFemaleEnglishVoice();
+  const successVoice = pickFemaleEnglishVoice(femaleVoice) ?? femaleVoice;
 
   const speakOnce = (index: number) => {
     if (session !== speakSession) return;
@@ -120,15 +111,14 @@ export function speakGameWord(
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
 
-    const baseVoice = pickNaturalVoice("en-US");
     if (mode === "fall") {
       utterance.rate = 0.92;
-      utterance.pitch = 1;
-      if (baseVoice) utterance.voice = baseVoice;
+      utterance.pitch = 1.05;
+      if (femaleVoice) utterance.voice = femaleVoice;
     } else {
-      utterance.rate = 1.08;
-      utterance.pitch = 1.25;
-      utterance.voice = pickAlternateEnglishVoice(baseVoice) ?? baseVoice ?? null;
+      utterance.rate = 1.05;
+      utterance.pitch = 1.15;
+      if (successVoice) utterance.voice = successVoice;
     }
 
     utterance.onend = () => {
@@ -142,4 +132,29 @@ export function speakGameWord(
   };
 
   speakOnce(0);
+}
+
+export function speakGameWord(
+  text: string,
+  mode: "fall" | "success"
+): void {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+  const repeat = mode === "fall" ? 3 : 1;
+  const session = ++speakSession;
+  window.speechSynthesis.cancel();
+
+  if (window.speechSynthesis.getVoices().length > 0) {
+    beginSpeakGameWord(text, mode, repeat, session);
+    return;
+  }
+
+  const onVoicesReady = () => {
+    window.speechSynthesis.removeEventListener("voiceschanged", onVoicesReady);
+    if (session !== speakSession) return;
+    beginSpeakGameWord(text, mode, repeat, session);
+  };
+
+  window.speechSynthesis.addEventListener("voiceschanged", onVoicesReady);
+  window.speechSynthesis.getVoices();
 }
