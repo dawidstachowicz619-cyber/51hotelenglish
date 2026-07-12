@@ -94,6 +94,8 @@ export function setDiningCatchBgmVolume(volume: number): void {
   }
 }
 
+let speakSession = 0;
+
 function pickAlternateEnglishVoice(exclude?: SpeechSynthesisVoice | null) {
   const voices = window.speechSynthesis.getVoices().filter((v) =>
     v.lang.toLowerCase().startsWith("en")
@@ -107,21 +109,37 @@ export function speakGameWord(
   mode: "fall" | "success"
 ): void {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+  const repeat = mode === "fall" ? 3 : 1;
+  const session = ++speakSession;
   window.speechSynthesis.cancel();
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-US";
+  const speakOnce = (index: number) => {
+    if (session !== speakSession) return;
 
-  const baseVoice = pickNaturalVoice("en-US");
-  if (mode === "fall") {
-    utterance.rate = 0.92;
-    utterance.pitch = 1;
-    if (baseVoice) utterance.voice = baseVoice;
-  } else {
-    utterance.rate = 1.08;
-    utterance.pitch = 1.25;
-    utterance.voice = pickAlternateEnglishVoice(baseVoice) ?? baseVoice ?? null;
-  }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
 
-  window.speechSynthesis.speak(utterance);
+    const baseVoice = pickNaturalVoice("en-US");
+    if (mode === "fall") {
+      utterance.rate = 0.92;
+      utterance.pitch = 1;
+      if (baseVoice) utterance.voice = baseVoice;
+    } else {
+      utterance.rate = 1.08;
+      utterance.pitch = 1.25;
+      utterance.voice = pickAlternateEnglishVoice(baseVoice) ?? baseVoice ?? null;
+    }
+
+    utterance.onend = () => {
+      if (session !== speakSession) return;
+      if (index + 1 < repeat) {
+        window.setTimeout(() => speakOnce(index + 1), 320);
+      }
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  speakOnce(0);
 }

@@ -208,7 +208,7 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
       const { durationMin, durationMax, roundTimeMs } = SPEED_CONFIG[fallSpeed];
 
       setTargetId(target.id);
-      setPrompt("听发音，点击掉落的正确中文！");
+      setPrompt("听发音 3 遍，点击掉落的正确中文！");
 
       const nextSprites: FallingSprite[] = options.map((item, i) => ({
         id: `${index}-${item.id}-${i}`,
