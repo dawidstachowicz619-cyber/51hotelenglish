@@ -122,6 +122,50 @@ const NON_US_ENGLISH_HINTS = [
   "en-ZA",
 ];
 
+const US_ENGLISH_MALE_HINTS = [
+  "Daniel",
+  "Alex",
+  "Fred",
+  "Aaron",
+  "Tom",
+  "Ralph",
+  "Bruce",
+  "James",
+  "Arthur",
+  "Google US English",
+  "Microsoft David",
+  "Microsoft Guy",
+  "Microsoft Mark",
+  "Male",
+  "David",
+  "benjamin",
+  "charles",
+];
+
+const ENGLISH_FEMALE_HINTS = [
+  "Samantha",
+  "Karen",
+  "Victoria",
+  "Susan",
+  "Allison",
+  "Ava",
+  "Zira",
+  "Hazel",
+  "Serena",
+  "Fiona",
+  "Kate",
+  "Moira",
+  "Tessa",
+  "Jenny",
+  "Sonia",
+  "Aria",
+  "Female",
+  "Anna",
+  "Claire",
+  "Bella",
+  "Diana",
+];
+
 const ENGLISH_MALE_HINTS = [
   "Daniel",
   "David",
@@ -196,6 +240,60 @@ export function pickAmericanFemaleEnglishVoice(
 
   const ranked = voices
     .map((voice) => ({ voice, score: americanFemaleVoiceScore(voice, exclude) }))
+    .filter((item) => item.score > -100)
+    .sort((a, b) => b.score - a.score);
+
+  return ranked[0]?.voice ?? pickNaturalVoice("en-US");
+}
+
+function americanMaleVoiceScore(
+  voice: SpeechSynthesisVoice,
+  exclude?: SpeechSynthesisVoice | null
+): number {
+  if (exclude && voice.name === exclude.name) return -1000;
+
+  const lang = normalizeVoiceLang(voice.lang);
+  if (!lang.startsWith("en")) return -1000;
+
+  let score = 0;
+  const name = voice.name;
+
+  if (lang.startsWith("en-us")) score += 48;
+  else if (/en-(gb|au|ie|in|nz|za)/.test(lang)) score -= 40;
+  else if (lang.startsWith("en")) score += 8;
+
+  for (const hint of US_ENGLISH_MALE_HINTS) {
+    if (name.includes(hint)) score += 16;
+  }
+  for (const hint of NON_US_ENGLISH_HINTS) {
+    if (name.includes(hint) || lang.includes(hint.toLowerCase())) score -= 28;
+  }
+  for (const hint of ENGLISH_FEMALE_HINTS) {
+    if (name.includes(hint)) score -= 30;
+  }
+  for (const hint of AVOID_VOICE_HINTS) {
+    if (name.includes(hint)) score -= 20;
+  }
+
+  if (name.includes("Neural") || name.includes("Natural")) score += 8;
+  if (voice.localService) score += 3;
+  if (name.includes("Google")) score += 4;
+  if (name.includes("Apple") || name.includes("com.apple")) score += 3;
+
+  return score;
+}
+
+/** 优先选择美式英文男声（答对反馈朗读） */
+export function pickAmericanMaleEnglishVoice(
+  exclude?: SpeechSynthesisVoice | null
+): SpeechSynthesisVoice | null {
+  if (typeof window === "undefined" || !window.speechSynthesis) return null;
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+
+  const ranked = voices
+    .map((voice) => ({ voice, score: americanMaleVoiceScore(voice, exclude) }))
     .filter((item) => item.score > -100)
     .sort((a, b) => b.score - a.score);
 
