@@ -15,12 +15,26 @@ export function isMobileDevice(): boolean {
   return /Android|iPhone|iPad|iPod|Mobile|HUAWEI|HONOR/i.test(ua);
 }
 
-export function isUnreliableWebSpeech(): boolean {
+export function isHarmonyOsDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /OpenHarmony|HarmonyOS|HUAWEI|HONOR|HuaweiBrowser/i.test(ua);
+}
+
+/** 鸿蒙 / 微信 / 华为浏览器：系统朗读不可用，需云端 TTS */
+export function prefersCloudGameTts(): boolean {
   if (typeof navigator === "undefined") return true;
   const ua = navigator.userAgent;
   if (/MicroMessenger/i.test(ua)) return true;
-  if (/HuaweiBrowser|HUAWEI|HONOR|OpenHarmony/i.test(ua)) return true;
-  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  if (isHarmonyOsDevice()) return true;
   if (/Android/i.test(ua) && !/Chrome\//i.test(ua)) return true;
+  return false;
+}
+
+export function isUnreliableWebSpeech(): boolean {
+  if (typeof navigator === "undefined") return true;
+  const ua = navigator.userAgent;
+  if (prefersCloudGameTts()) return true;
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
   return false;
 }

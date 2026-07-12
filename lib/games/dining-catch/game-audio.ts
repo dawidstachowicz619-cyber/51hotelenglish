@@ -1,3 +1,4 @@
+import { prefersCloudGameTts } from "@/lib/speech/browser-speech";
 import {
   pickAmericanFemaleEnglishVoice,
   pickAmericanMaleEnglishVoice,
@@ -8,6 +9,46 @@ let bgmNodes: {
   master: GainNode;
   interval: ReturnType<typeof setInterval> | null;
 } | null = null;
+
+let cloudTtsAudio: HTMLAudioElement | null = null;
+let speakSession = 0;
+let audioUnlocked = false;
+
+function getCloudTtsAudio(): HTMLAudioElement | null {
+  if (typeof document === "undefined") return null;
+  if (!cloudTtsAudio) {
+    const audio = document.createElement("audio");
+    audio.id = "dining-catch-cloud-tts";
+    audio.setAttribute("playsinline", "true");
+    audio.setAttribute("webkit-playsinline", "true");
+    audio.setAttribute("x5-playsinline", "true");
+    audio.preload = "auto";
+    audio.style.display = "none";
+    document.body.appendChild(audio);
+    cloudTtsAudio = audio;
+  }
+  return cloudTtsAudio;
+}
+
+/** 鸿蒙 / 微信：用户点击时同步解锁 HTML5 音频 */
+export function unlockGameAudioSync(): void {
+  audioUnlocked = true;
+  const audio = getCloudTtsAudio();
+  if (!audio) return;
+  audio.muted = true;
+  audio.src =
+    "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+  void audio.play().catch(() => undefined);
+  window.setTimeout(() => {
+    audio.pause();
+    audio.muted = false;
+    audio.removeAttribute("src");
+  }, 40);
+}
+
+export function supportsDiningCatchBgm(): boolean {
+  return !prefersCloudGameTts();
+}
 
 async function ensureAudioContext(): Promise<AudioContext | null> {
   if (typeof window === "undefined") return null;
@@ -53,6 +94,8 @@ const BGM_MELODY = [
 ];
 
 export async function startDiningCatchBgm(volume = 0.08): Promise<void> {
+  if (!supportsDiningCatchBgm()) return;
+
   stopDiningCatchBgm();
   const ctx = await ensureAudioContext();
   if (!ctx) return;
@@ -92,14 +135,107 @@ export function stopDiningCatchBgm(): void {
 }
 
 export function setDiningCatchBgmVolume(volume: number): void {
+  if (!supportsDiningCatchBgm()) return;
   if (bgmNodes?.master) {
     bgmNodes.master.gain.value = volume;
   }
 }
 
-let speakSession = 0;
+function stopCloudTtsPlayback(): void {
+  const audio = cloudTtsAudio;
+  if (!audio) return;
+  audio.onended = null;
+  audio.onerror = null;
+  audio.pause();
+  if (audio.src?.startsWith("blob:")) {
+    URL.revokeObjectURL(audio.src);
+  }
+  audio.removeAttribute("src");
+}
 
-function beginSpeakGameWord(
+async function fetchCloudTtsBlob(
+  text: string,
+  mode: "fall" | "success"
+): Promise<Blob | null> {
+  const res = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, mode }),
+  });
+  if (!res.ok) return null;
+  const blob = await res.blob();
+  return blob.size > 0 ? blob : null;
+}
+
+function waitForHtmlAudioEnd(audio: HTMLAudioElement): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const onEnded = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("cloud tts play failed"));
+    };
+    const cleanup = () => {
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onError);
+    };
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onError);
+  });
+}
+
+async function speakViaCloudTts(
+  text: string,
+  mode: "fall" | "success",
+  repeat: number,
+  session: number
+): Promise<boolean> {
+  const audio = getCloudTtsAudio();
+  if (!audio) return false;
+
+  const blob = await fetchCloudTtsBlob(text, mode);
+  if (!blob || session !== speakSession) return false;
+
+  const url = URL.createObjectURL(blob);
+
+  try {
+    for (let i = 0; i < repeat; i++) {
+      if (session !== speakSession) return true;
+
+      audio.pause();
+      audio.currentTime = 0;
+      audio.src = url;
+      audio.volume = 1;
+
+      try {
+        await audio.play();
+      } catch {
+        return false;
+      }
+
+      try {
+        await waitForHtmlAudioEnd(audio);
+      } catch {
+        return false;
+      }
+
+      if (i + 1 < repeat) {
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    }
+    return true;
+  } finally {
+    URL.revokeObjectURL(url);
+    if (session === speakSession) {
+      audio.pause();
+      audio.removeAttribute("src");
+    }
+  }
+}
+
+function beginWebSpeech(
   text: string,
   mode: "fall" | "success",
   repeat: number,
@@ -137,27 +273,43 @@ function beginSpeakGameWord(
   speakOnce(0);
 }
 
-export function speakGameWord(
-  text: string,
-  mode: "fall" | "success"
-): void {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
+export function speakGameWord(text: string, mode: "fall" | "success"): void {
+  if (typeof window === "undefined" || !text.trim()) return;
 
   const repeat = mode === "fall" ? 3 : 1;
   const session = ++speakSession;
+
+  if (prefersCloudGameTts()) {
+    stopCloudTtsPlayback();
+    if (!audioUnlocked) unlockGameAudioSync();
+    void speakViaCloudTts(text, mode, repeat, session);
+    return;
+  }
+
+  if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
 
   if (window.speechSynthesis.getVoices().length > 0) {
-    beginSpeakGameWord(text, mode, repeat, session);
+    beginWebSpeech(text, mode, repeat, session);
     return;
   }
 
   const onVoicesReady = () => {
     window.speechSynthesis.removeEventListener("voiceschanged", onVoicesReady);
     if (session !== speakSession) return;
-    beginSpeakGameWord(text, mode, repeat, session);
+    beginWebSpeech(text, mode, repeat, session);
   };
 
   window.speechSynthesis.addEventListener("voiceschanged", onVoicesReady);
   window.speechSynthesis.getVoices();
 }
+
+export function stopGameSpeech(): void {
+  speakSession += 1;
+  stopCloudTtsPlayback();
+  if (typeof window !== "undefined" && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+export { prefersCloudGameTts };

@@ -6,6 +6,7 @@ import { Gamepad2 } from "lucide-react";
 import { DiningCatchGame } from "@/components/games/dining-catch/dining-catch-game";
 import { DiningCatchMap } from "@/components/games/dining-catch/dining-catch-map";
 import { DiningCatchMobileShell } from "@/components/games/dining-catch/dining-catch-mobile-shell";
+import { unlockGameAudioSync } from "@/lib/games/dining-catch/game-audio";
 import {
   defaultDiningCatchProgress,
   loadDiningCatchProgress,
@@ -36,6 +37,7 @@ export function DiningCatchHub() {
   }, [refreshProgress]);
 
   const handleSelectLevel = (level: number) => {
+    unlockGameAudioSync();
     setActiveLevel(level);
     setView("game");
   };

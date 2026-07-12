@@ -48,7 +48,6 @@ export function getTtsConfig(): TtsConfig | null {
 
   const model =
     process.env.SILICONFLOW_TTS_MODEL ?? "fishaudio/fish-speech-1.5";
-  const voicePreset = process.env.SILICONFLOW_TTS_VOICE ?? "anna";
   const format = parseFormat(process.env.SILICONFLOW_TTS_FORMAT);
 
   return {
@@ -57,10 +56,18 @@ export function getTtsConfig(): TtsConfig | null {
       process.env.SILICONFLOW_BASE_URL ?? "https://api.siliconflow.cn/v1"
     ),
     model,
-    voice: voicePreset.includes(":")
-      ? voicePreset
-      : `${model}:${voicePreset}`,
+    voice: "",
     sampleRate: parseSampleRate(process.env.SILICONFLOW_TTS_SAMPLE_RATE, format),
     format,
   };
+}
+
+export function resolveTtsVoice(mode: TtsSpeechMode, config: TtsConfig): string {
+  const model = config.model;
+  if (mode === "success") {
+    const male = process.env.SILICONFLOW_TTS_VOICE_MALE ?? "alex";
+    return male.includes(":") ? male : `${model}:${male}`;
+  }
+  const female = process.env.SILICONFLOW_TTS_VOICE ?? "anna";
+  return female.includes(":") ? female : `${model}:${female}`;
 }

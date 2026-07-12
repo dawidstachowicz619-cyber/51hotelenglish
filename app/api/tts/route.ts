@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   formatTtsInput,
   getTtsConfig,
+  resolveTtsVoice,
   ttsSpeedForMode,
   type TtsSpeechMode,
 } from "@/lib/ai/tts-config";
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
     const mode = parseSpeechMode(body.mode);
     const input = formatTtsInput(text, mode);
     const speed = ttsSpeedForMode(mode);
+    const voice = resolveTtsVoice(mode, config);
 
     const res = await fetch(`${config.baseUrl}/audio/speech`, {
       method: "POST",
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         model: config.model,
         input,
-        voice: config.voice,
+        voice,
         response_format: config.format,
         speed,
         sample_rate: config.sampleRate,
