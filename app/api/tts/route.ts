@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { getTtsConfig } from "@/lib/ai/tts-config";
+import {
+  formatTtsInput,
+  getTtsConfig,
+  ttsSpeedForMode,
+  type TtsSpeechMode,
+} from "@/lib/ai/tts-config";
+
+function parseSpeechMode(value: unknown): TtsSpeechMode {
+  if (value === "fall" || value === "success") return value;
+  return "default";
+}
 
 export async function POST(request: Request) {
   const config = getTtsConfig();
@@ -9,11 +19,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as { text?: string };
+    const body = (await request.json()) as { text?: string; mode?: unknown };
     const text = body.text?.trim();
     if (!text) {
       return NextResponse.json({ error: "Missing text" }, { status: 400 });
     }
+
+    const mode = parseSpeechMode(body.mode);
+    const input = formatTtsInput(text, mode);
+    const speed = ttsSpeedForMode(mode);
 
     const res = await fetch(`${config.baseUrl}/audio/speech`, {
       method: "POST",
@@ -23,10 +37,12 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: config.model,
-        input: text,
+        input,
         voice: config.voice,
         response_format: "mp3",
-        speed: 0.95,
+        speed,
+        sample_rate: config.sampleRate,
+        gain: 0.5,
       }),
     });
 

@@ -169,6 +169,7 @@ async function playMp3Blob(blob: Blob): Promise<void> {
 
 async function speakViaCloudTts(
   text: string,
+  mode: "fall" | "success",
   repeat: number,
   session: number
 ): Promise<boolean> {
@@ -178,7 +179,7 @@ async function speakViaCloudTts(
     const res = await fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, mode }),
     });
 
     if (!res.ok) return false;
@@ -267,12 +268,12 @@ export async function speakGameWord(
 
   await ensureAudioContext();
 
-  if (isUnreliableWebSpeech()) {
-    const ok = await speakViaCloudTts(text, repeat, session);
-    if (ok && session === speakSession) return;
-  }
+  const cloudOk = await speakViaCloudTts(text, mode, repeat, session);
+  if (cloudOk && session === speakSession) return;
 
-  await speakViaWebSpeech(text, mode, repeat, session);
+  if (!isUnreliableWebSpeech()) {
+    await speakViaWebSpeech(text, mode, repeat, session);
+  }
 }
 
 export function stopGameSpeech(): void {
