@@ -1,4 +1,4 @@
-import { pickFemaleEnglishVoice } from "@/lib/speech/voice-selection";
+import { pickAmericanFemaleEnglishVoice } from "@/lib/speech/voice-selection";
 
 let bgmNodes: {
   ctx: AudioContext;
@@ -102,8 +102,8 @@ function beginSpeakGameWord(
   repeat: number,
   session: number
 ): void {
-  const femaleVoice = pickFemaleEnglishVoice();
-  const successVoice = pickFemaleEnglishVoice(femaleVoice) ?? femaleVoice;
+  const femaleVoice = pickAmericanFemaleEnglishVoice();
+  const successVoice = pickAmericanFemaleEnglishVoice(femaleVoice) ?? femaleVoice;
 
   const speakOnce = (index: number) => {
     if (session !== speakSession) return;

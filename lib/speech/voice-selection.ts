@@ -89,32 +89,37 @@ function voiceScore(voice: SpeechSynthesisVoice, langPrefix: string): number {
   return score;
 }
 
-const ENGLISH_FEMALE_HINTS = [
+const US_ENGLISH_FEMALE_HINTS = [
   "Samantha",
-  "Karen",
-  "Victoria",
-  "Susan",
   "Allison",
   "Ava",
+  "Susan",
   "Zira",
-  "Hazel",
-  "Serena",
-  "Fiona",
-  "Kate",
-  "Moira",
-  "Tessa",
-  "Jenny",
-  "Sonia",
-  "Aria",
-  "Google US English Female",
-  "Google UK English Female",
+  "Google US English",
   "Microsoft Zira",
   "Microsoft Aria",
+  "Microsoft Jenny",
+  "Jenny",
+  "Sonia",
   "Female",
-  "Anna",
-  "Claire",
-  "Bella",
-  "Diana",
+];
+
+const NON_US_ENGLISH_HINTS = [
+  "Karen",
+  "Fiona",
+  "Moira",
+  "Tessa",
+  "Kate",
+  "Hazel",
+  "Serena",
+  "Victoria",
+  "Google UK English",
+  "en-GB",
+  "en-AU",
+  "en-IE",
+  "en-IN",
+  "en-NZ",
+  "en-ZA",
 ];
 
 const ENGLISH_MALE_HINTS = [
@@ -139,20 +144,31 @@ const ENGLISH_MALE_HINTS = [
   "charles",
 ];
 
-function englishFemaleVoiceScore(
+function normalizeVoiceLang(lang: string): string {
+  return lang.toLowerCase().replace("_", "-");
+}
+
+function americanFemaleVoiceScore(
   voice: SpeechSynthesisVoice,
   exclude?: SpeechSynthesisVoice | null
 ): number {
   if (exclude && voice.name === exclude.name) return -1000;
 
-  const lang = voice.lang.toLowerCase();
+  const lang = normalizeVoiceLang(voice.lang);
   if (!lang.startsWith("en")) return -1000;
 
   let score = 0;
   const name = voice.name;
 
-  for (const hint of ENGLISH_FEMALE_HINTS) {
-    if (name.includes(hint)) score += 14;
+  if (lang.startsWith("en-us")) score += 48;
+  else if (/en-(gb|au|ie|in|nz|za)/.test(lang)) score -= 40;
+  else if (lang.startsWith("en")) score += 8;
+
+  for (const hint of US_ENGLISH_FEMALE_HINTS) {
+    if (name.includes(hint)) score += 16;
+  }
+  for (const hint of NON_US_ENGLISH_HINTS) {
+    if (name.includes(hint) || lang.includes(hint.toLowerCase())) score -= 28;
   }
   for (const hint of ENGLISH_MALE_HINTS) {
     if (name.includes(hint)) score -= 30;
@@ -169,8 +185,8 @@ function englishFemaleVoiceScore(
   return score;
 }
 
-/** 优先选择英文女声（餐饮游戏单词朗读） */
-export function pickFemaleEnglishVoice(
+/** 优先选择美式英文女声（餐饮游戏单词朗读） */
+export function pickAmericanFemaleEnglishVoice(
   exclude?: SpeechSynthesisVoice | null
 ): SpeechSynthesisVoice | null {
   if (typeof window === "undefined" || !window.speechSynthesis) return null;
@@ -179,11 +195,18 @@ export function pickFemaleEnglishVoice(
   if (voices.length === 0) return null;
 
   const ranked = voices
-    .map((voice) => ({ voice, score: englishFemaleVoiceScore(voice, exclude) }))
+    .map((voice) => ({ voice, score: americanFemaleVoiceScore(voice, exclude) }))
     .filter((item) => item.score > -100)
     .sort((a, b) => b.score - a.score);
 
   return ranked[0]?.voice ?? pickNaturalVoice("en-US");
+}
+
+/** @deprecated 使用 pickAmericanFemaleEnglishVoice */
+export function pickFemaleEnglishVoice(
+  exclude?: SpeechSynthesisVoice | null
+): SpeechSynthesisVoice | null {
+  return pickAmericanFemaleEnglishVoice(exclude);
 }
 
 export function pickNaturalVoice(lang: SpeechLang): SpeechSynthesisVoice | null {
