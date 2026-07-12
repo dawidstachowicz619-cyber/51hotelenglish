@@ -6,6 +6,11 @@ import { RUSSIAN_CAMPAIGN_PROGRESS_KEY } from "@/lib/types/hotel-russian-campaig
 import { RUSSIAN_DAILY_CHECKIN_KEY } from "@/lib/types/russian-daily-checkin";
 import { EMPLOYEE_TRAINING_PROGRESS_KEY } from "@/lib/types/hr-training";
 import { loadProfile } from "@/lib/points/storage";
+import {
+  drainPendingLearningHistory,
+  peekPendingLearningHistory,
+} from "@/lib/hr/learning-history-storage";
+import { loadCatalogLinkProgress } from "@/lib/course/catalog-link-progress-storage";
 
 const TRIAL_KEY = "51he-trial-lessons-used";
 const META_KEY = "51he-employee-meta";
@@ -30,6 +35,13 @@ export function hydrateLocalFromBootstrap(payload: LearnerBootstrapPayload): voi
   localStorage.setItem(RUSSIAN_ITEMS_KEY, JSON.stringify(progress.russianItems));
   localStorage.setItem(EMPLOYEE_TRAINING_PROGRESS_KEY, JSON.stringify(progress.employeeTraining));
   localStorage.setItem(META_KEY, JSON.stringify(progress.employeeMeta));
+
+  if (progress.catalogLinks) {
+    localStorage.setItem(
+      "51he-catalog-link-progress",
+      JSON.stringify(progress.catalogLinks)
+    );
+  }
 
   if (history.length > 0) {
     const store = { [profile.userId]: history };
@@ -70,7 +82,9 @@ export function collectLocalSyncPayload(): LearnerSyncPayload {
       russianItems: readJson(RUSSIAN_ITEMS_KEY),
       employeeTraining: readJson(EMPLOYEE_TRAINING_PROGRESS_KEY),
       employeeMeta: readJson(META_KEY),
+      catalogLinks: loadCatalogLinkProgress(),
     },
+    historyAppend: peekPendingLearningHistory(),
   };
 }
 
@@ -145,6 +159,9 @@ export async function pushLocalToCloud(): Promise<boolean> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(collectLocalSyncPayload()),
     });
+    if (res.ok) {
+      drainPendingLearningHistory();
+    }
     return res.ok;
   } catch {
     return false;

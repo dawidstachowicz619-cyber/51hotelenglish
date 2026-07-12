@@ -158,7 +158,7 @@ export function EmployeeTable({
                       </span>
                       {emp.isImported && (
                         <span className="rounded-full bg-secondary/15 px-1.5 py-0.5 text-[10px] font-bold text-secondary-dark">
-                          导入
+                          分配课程
                         </span>
                       )}
                       {emp.isLiveUser && (

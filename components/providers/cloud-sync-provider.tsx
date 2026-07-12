@@ -19,8 +19,10 @@ const SYNC_EVENTS = [
   "employee-meta-updated",
   "russian-daily-updated",
   "russian-campaign-updated",
-  "russian-items-updated",
-  "training-progress-updated",
+  "russian-items-progress-updated",
+  "employee-training-updated",
+  "learning-history-updated",
+  "catalog-course-updated",
 ] as const;
 
 export function CloudSyncProvider() {

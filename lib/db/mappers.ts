@@ -148,6 +148,7 @@ export type LearnerBootstrapPayload = {
     russianItems: Record<string, unknown>;
     employeeTraining: Record<string, unknown>;
     employeeMeta: Record<string, unknown>;
+    catalogLinks: Record<string, boolean>;
   };
   history: LearningHistoryEntry[];
 };

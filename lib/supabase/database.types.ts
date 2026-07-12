@@ -210,6 +210,89 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["hotel_hr_permissions"]["Insert"]>;
       };
+      hotel_course_assignments: {
+        Row: {
+          id: string;
+          hotel_id: string;
+          catalog_course_id: string;
+          assign_mode: "all" | "department" | "employees";
+          department: string;
+          employee_ids: Json;
+          required: boolean;
+          assigned_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          hotel_id: string;
+          catalog_course_id: string;
+          assign_mode?: "all" | "department" | "employees";
+          department?: string;
+          employee_ids?: Json;
+          required?: boolean;
+          assigned_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["hotel_course_assignments"]["Insert"]>;
+      };
+      hotel_departments: {
+        Row: {
+          hotel_id: string;
+          departments: Json;
+          updated_at: string;
+        };
+        Insert: {
+          hotel_id: string;
+          departments?: Json;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["hotel_departments"]["Insert"]>;
+      };
+      hr_training_modules: {
+        Row: {
+          id: string;
+          legacy_id: string | null;
+          hotel_id: string;
+          title: string;
+          file_name: string;
+          uploaded_at: string;
+          department: string;
+          phase: string;
+          ask_dimension: string;
+          delivery_type: string;
+          video_url: string | null;
+          video_duration_sec: number | null;
+          source: string;
+          slides: Json;
+          questions: Json;
+          slide_count: number;
+          question_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          legacy_id?: string | null;
+          hotel_id: string;
+          title: string;
+          file_name?: string;
+          uploaded_at?: string;
+          department?: string;
+          phase?: string;
+          ask_dimension?: string;
+          delivery_type?: string;
+          video_url?: string | null;
+          video_duration_sec?: number | null;
+          source?: string;
+          slides?: Json;
+          questions?: Json;
+          slide_count?: number;
+          question_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["hr_training_modules"]["Insert"]>;
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -224,3 +307,6 @@ export type EmployeeRow = Database["public"]["Tables"]["employees"]["Row"];
 export type LearningProgressRow = Database["public"]["Tables"]["learning_progress"]["Row"];
 export type LearningHistoryRow = Database["public"]["Tables"]["learning_history"]["Row"];
 export type HrAdminAccountRow = Database["public"]["Tables"]["hr_admin_accounts"]["Row"];
+export type HotelCourseAssignmentRow =
+  Database["public"]["Tables"]["hotel_course_assignments"]["Row"];
+export type HrTrainingModuleRow = Database["public"]["Tables"]["hr_training_modules"]["Row"];

@@ -77,6 +77,7 @@ export async function bootstrapLearner(
         russianItems: (progressMap[PROGRESS_KEYS.russianItems] as Record<string, unknown>) ?? {},
         employeeTraining: (progressMap[PROGRESS_KEYS.employeeTraining] as Record<string, unknown>) ?? {},
         employeeMeta: (learner.employee_meta as Record<string, unknown>) ?? {},
+        catalogLinks: (progressMap[PROGRESS_KEYS.catalogLinks] as Record<string, boolean>) ?? {},
       },
       history: (historyRows ?? []).map(historyRowToEntry),
     },
@@ -127,6 +128,7 @@ export async function syncLearnerData(
       [PROGRESS_KEYS.russianCampaign, body.progress.russianCampaign],
       [PROGRESS_KEYS.russianItems, body.progress.russianItems],
       [PROGRESS_KEYS.employeeTraining, body.progress.employeeTraining],
+      [PROGRESS_KEYS.catalogLinks, body.progress.catalogLinks],
     ];
     for (const [key, data] of entries) {
       if (data !== undefined) await upsertProgress(learner.id, key, data);

@@ -24,6 +24,7 @@ export const PROGRESS_KEYS = {
   russianCampaign: "russian_campaign",
   russianItems: "russian_items",
   employeeTraining: "employee_training",
+  catalogLinks: "catalog_links",
 } as const;
 
 export type ProgressKey = (typeof PROGRESS_KEYS)[keyof typeof PROGRESS_KEYS];

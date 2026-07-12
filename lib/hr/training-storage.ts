@@ -20,6 +20,18 @@ function saveStore(store: TrainingStore): void {
   window.dispatchEvent(new Event("hr-training-updated"));
 }
 
+export function replaceHotelTrainingModules(
+  hotel: string,
+  modules: HrTrainingModule[]
+): void {
+  const key = hotel.trim();
+  const store = loadStore();
+  store[key] = [...modules].sort(
+    (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+  );
+  saveStore(store);
+}
+
 export function getHotelTrainingModules(hotel: string): HrTrainingModule[] {
   const key = hotel.trim();
   return (loadStore()[key] ?? []).sort(

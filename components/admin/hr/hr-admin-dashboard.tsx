@@ -22,6 +22,9 @@ import { hrEmployeeRecordPath } from "@/lib/hr/employee-record-path";
 import { isHotelHrAccessEnabled } from "@/lib/hr/hotel-hr-permissions";
 import { clearHrSession, loadHrSession } from "@/lib/hr/hr-session";
 import { fetchHotelEmployees, cloudRemoveEmployee } from "@/lib/hr/roster-api";
+import { fetchHotelCourseAssignments } from "@/lib/hr/course-assignment-api";
+import { fetchHotelDepartments } from "@/lib/hr/hotel-department-api";
+import { fetchHotelTrainingModules } from "@/lib/hr/training-modules-api";
 import { syncCurrentUserToRoster } from "@/lib/hr/sync-employee";
 import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
 import {
@@ -42,6 +45,9 @@ export function HrAdminDashboard() {
     syncCurrentUserToRoster();
     if (!hotel) return;
     void fetchHotelEmployees(hotel).then(setEmployees);
+    void fetchHotelCourseAssignments(hotel);
+    void fetchHotelDepartments(hotel);
+    void fetchHotelTrainingModules(hotel);
   }, [hotel]);
 
   useEffect(() => {

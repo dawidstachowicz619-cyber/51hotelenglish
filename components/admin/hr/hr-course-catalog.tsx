@@ -17,11 +17,13 @@ import {
   getCatalogCourseById,
 } from "@/lib/data/general-course-catalog";
 import {
-  assignCatalogCourse,
+  cloudAssignCatalogCourse,
+  cloudUnassignCatalogCourse,
+} from "@/lib/hr/course-assignment-api";
+import {
   getHotelCourseAssignments,
   isCatalogCourseAssigned,
   resolveAssignMode,
-  unassignCatalogCourse,
 } from "@/lib/hr/course-assignment-storage";
 import { getDepartmentLabel, getHotelDepartments } from "@/lib/hr/hotel-department-storage";
 import type { EmployeeDepartment, EmployeeLearningRecord } from "@/lib/types/hr-admin";
@@ -125,18 +127,19 @@ export function HrCourseCatalog({ hotel, employees }: HrCourseCatalogProps) {
 
   const handleAssign = (courseId: string) => {
     setAssignError(null);
-    const result = assignCatalogCourse(hotel, courseId, {
+    void cloudAssignCatalogCourse(hotel, courseId, {
       assignMode,
       department: assignMode === "department" ? assignDept : undefined,
       employeeIds: assignMode === "employees" ? selectedEmployeeIds : undefined,
       required: true,
+    }).then((result) => {
+      if (!result.ok) {
+        setAssignError(result.error);
+        return;
+      }
+      setAssignTarget(null);
+      refresh();
     });
-    if (!result.ok) {
-      setAssignError(result.error);
-      return;
-    }
-    setAssignTarget(null);
-    refresh();
   };
 
   const toggleEmployee = (id: string) => {
@@ -147,8 +150,7 @@ export function HrCourseCatalog({ hotel, employees }: HrCourseCatalogProps) {
 
   const handleUnassign = (courseId: string) => {
     if (!window.confirm("确定取消分配该课程？员工端将不再显示。")) return;
-    unassignCatalogCourse(hotel, courseId);
-    refresh();
+    void cloudUnassignCatalogCourse(hotel, courseId).then(refresh);
   };
 
   return (

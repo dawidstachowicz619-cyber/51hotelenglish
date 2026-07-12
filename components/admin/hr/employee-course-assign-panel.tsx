@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, CheckCircle2 } from "lucide-react";
 
 import { GENERAL_COURSE_CATALOG } from "@/lib/data/general-course-catalog";
+import { cloudSetEmployeeCourseAssignment } from "@/lib/hr/course-assignment-api";
 import {
   getAssignedCatalogCoursesForEmployee,
   isCourseAssignedToEmployee,
-  setEmployeeCourseAssignment,
 } from "@/lib/hr/course-assignment-storage";
 import type { EmployeeLearningRecord } from "@/lib/types/hr-admin";
 import { CATALOG_CATEGORY_LABELS, type CatalogCategory } from "@/lib/types/course-catalog";
@@ -56,18 +56,19 @@ export function EmployeeCourseAssignPanel({
   const handleToggle = (courseId: string, enabled: boolean) => {
     if (!canEdit) return;
     setError(null);
-    const result = setEmployeeCourseAssignment(
+    void cloudSetEmployeeCourseAssignment(
       hotel,
       courseId,
       employee.id,
       enabled,
       allEmployees
-    );
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    refresh();
+    ).then((result) => {
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      refresh();
+    });
   };
 
   return (

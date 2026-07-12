@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Clock, History } from "lucide-react";
 
-import { getLearningHistory } from "@/lib/hr/learning-history-storage";
+import {
+  getLearningHistory,
+  replaceLearningHistory,
+} from "@/lib/hr/learning-history-storage";
+import { isCloudSyncActive } from "@/lib/storage/cloud-sync";
+import type { LearningHistoryEntry } from "@/lib/types/learning-record";
 import {
   ASK_SHORT,
   LEARNING_PHASE_LABELS,
@@ -26,6 +31,22 @@ function formatWhen(iso: string): string {
 
 export function EmployeeLearningHistoryList({ employeeId }: Props) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [cloudHistory, setCloudHistory] = useState<LearningHistoryEntry[] | null>(null);
+
+  useEffect(() => {
+    if (!isCloudSyncActive()) return;
+    void fetch(
+      `/api/hr/learning-history?employeeId=${encodeURIComponent(employeeId)}`,
+      { credentials: "include" }
+    )
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { history?: LearningHistoryEntry[] } | null) => {
+        if (data?.history) {
+          setCloudHistory(data.history);
+          replaceLearningHistory(employeeId, data.history);
+        }
+      });
+  }, [employeeId, refreshKey]);
 
   useEffect(() => {
     const refresh = () => setRefreshKey((k) => k + 1);
@@ -35,6 +56,7 @@ export function EmployeeLearningHistoryList({ employeeId }: Props) {
     window.addEventListener("russian-campaign-updated", refresh);
     window.addEventListener("russian-items-progress-updated", refresh);
     window.addEventListener("employee-training-updated", refresh);
+    window.addEventListener("learning-history-updated", refresh);
     return () => {
       window.removeEventListener("course-progress-updated", refresh);
       window.removeEventListener("assessment-updated", refresh);
@@ -42,15 +64,16 @@ export function EmployeeLearningHistoryList({ employeeId }: Props) {
       window.removeEventListener("russian-campaign-updated", refresh);
       window.removeEventListener("russian-items-progress-updated", refresh);
       window.removeEventListener("employee-training-updated", refresh);
+      window.removeEventListener("learning-history-updated", refresh);
     };
   }, []);
 
   const history = useMemo(() => {
     void refreshKey;
-    return getLearningHistory(employeeId).sort((a, b) =>
-      b.at.localeCompare(a.at)
-    );
-  }, [employeeId, refreshKey]);
+    const local = getLearningHistory(employeeId);
+    const source = cloudHistory && cloudHistory.length > 0 ? cloudHistory : local;
+    return [...source].sort((a, b) => b.at.localeCompare(a.at));
+  }, [employeeId, refreshKey, cloudHistory]);
 
   return (
     <section className="card-elevated mt-6 overflow-hidden">
@@ -63,6 +86,7 @@ export function EmployeeLearningHistoryList({ employeeId }: Props) {
             <h3 className="font-display text-lg text-foreground">学习活动记录</h3>
             <p className="text-xs font-semibold text-muted-foreground">
               按时间倒序 · 共 {history.length} 条
+              {isCloudSyncActive() && " · 云端同步"}
             </p>
           </div>
         </div>

@@ -16,10 +16,15 @@ import {
   HrCourseLockBanner,
   useHrCourseAccess,
 } from "@/components/learning/hr-course-lock";
+import { fetchLearnerCourseAssignments } from "@/lib/hr/course-assignment-api";
 import {
   catalogCourseToTrainingModule,
   getAssignedCatalogCoursesForEmployee,
 } from "@/lib/hr/course-assignment-storage";
+import {
+  isCatalogLinkCourseCompleted,
+  markCatalogLinkCourseVisited,
+} from "@/lib/course/catalog-link-progress-storage";
 import {
   getModuleScore,
   isModuleCompleted,
@@ -39,30 +44,6 @@ type AssignedCatalogCoursesProps = {
   employeeId: string;
 };
 
-function linkCourseCompleted(courseId: string): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    const raw = localStorage.getItem("51he-catalog-link-progress");
-    const map = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
-    return Boolean(map[courseId]);
-  } catch {
-    return false;
-  }
-}
-
-function markLinkCourseVisited(courseId: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = localStorage.getItem("51he-catalog-link-progress");
-    const map = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
-    map[courseId] = true;
-    localStorage.setItem("51he-catalog-link-progress", JSON.stringify(map));
-    window.dispatchEvent(new Event("catalog-course-updated"));
-  } catch {
-    /* ignore */
-  }
-}
-
 export function AssignedCatalogCourses({
   hotel,
   department,
@@ -80,7 +61,7 @@ export function AssignedCatalogCourses({
   }, [hotel, department, employeeId]);
 
   useEffect(() => {
-    refresh();
+    void fetchLearnerCourseAssignments(hotel).then(() => refresh());
     window.addEventListener("hotel-course-assignments-updated", refresh);
     window.addEventListener("catalog-course-updated", refresh);
     window.addEventListener("employee-training-updated", refresh);
@@ -89,7 +70,7 @@ export function AssignedCatalogCourses({
       window.removeEventListener("catalog-course-updated", refresh);
       window.removeEventListener("employee-training-updated", refresh);
     };
-  }, [refresh]);
+  }, [hotel, refresh]);
 
   if (activeModule) {
     return (
@@ -157,7 +138,7 @@ function CourseCard({
   const trainingDone =
     !isLink && isModuleCompleted(course.id);
   const trainingScore = !isLink ? getModuleScore(course.id) : 0;
-  const linkDone = isLink && linkCourseCompleted(course.id);
+  const linkDone = isLink && isCatalogLinkCourseCompleted(course.id);
   const done = isLink ? linkDone : trainingDone;
 
   return (
@@ -200,7 +181,7 @@ function CourseCard({
           href={linkDelivery.href}
           fullWidth
           variant={done ? "outline" : "default"}
-          onClick={() => markLinkCourseVisited(course.id)}
+          onClick={() => markCatalogLinkCourseVisited(course.id)}
           className="mt-4"
         >
           <BookOpen className="size-4" />

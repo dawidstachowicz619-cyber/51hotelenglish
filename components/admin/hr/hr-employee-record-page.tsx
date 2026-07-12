@@ -15,6 +15,9 @@ import {
   cloudRemoveEmployee,
   cloudUpdateEmployee,
 } from "@/lib/hr/roster-api";
+import { fetchHotelCourseAssignments } from "@/lib/hr/course-assignment-api";
+import { fetchHotelDepartments } from "@/lib/hr/hotel-department-api";
+import { fetchHotelTrainingModules } from "@/lib/hr/training-modules-api";
 import { syncCurrentUserToRoster } from "@/lib/hr/sync-employee";
 import type { EmployeeLearningRecord, EmployeeUpdatePatch } from "@/lib/types/hr-admin";
 
@@ -35,6 +38,9 @@ export function HrEmployeeRecordPage({ employeeIdParam }: Props) {
       setEmployees(list);
       setEmployee(list.find((e) => e.id === employeeId) ?? null);
     });
+    void fetchHotelCourseAssignments(hotel);
+    void fetchHotelDepartments(hotel);
+    void fetchHotelTrainingModules(hotel);
   }, [hotel, employeeId]);
 
   useEffect(() => {

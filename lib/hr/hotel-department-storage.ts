@@ -24,6 +24,16 @@ function saveStore(store: DepartmentStore): void {
   window.dispatchEvent(new Event("hotel-departments-updated"));
 }
 
+export function replaceHotelDepartments(
+  hotel: string,
+  departments: HotelDepartment[]
+): void {
+  const key = normalizeHotel(hotel);
+  const store = loadStore();
+  store[key] = departments.map((d, index) => ({ ...d, order: index }));
+  saveStore(store);
+}
+
 function normalizeHotel(hotel: string): string {
   return hotel.trim();
 }

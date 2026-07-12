@@ -10,12 +10,13 @@ import {
 } from "lucide-react";
 
 import { HrTrainingCourseList } from "@/components/admin/hr/hr-training-course-list";
-import { processDocumentToModule, processVideoToModule } from "@/lib/hr/document-processor";
+import { fetchHotelDepartments } from "@/lib/hr/hotel-department-api";
 import { getHotelDepartments } from "@/lib/hr/hotel-department-storage";
+import { processDocumentToModule, processVideoToModule } from "@/lib/hr/document-processor";
 import {
-  addHotelTrainingModule,
-  getHotelTrainingModules,
-} from "@/lib/hr/training-storage";
+  cloudAddHotelTrainingModule,
+  fetchHotelTrainingModules,
+} from "@/lib/hr/training-modules-api";
 import type { EmployeeDepartment } from "@/lib/types/hr-admin";
 import {
   ASK_SHORT,
@@ -26,6 +27,7 @@ import {
 import {
   SUPPORTED_DOC_EXTENSIONS,
   SUPPORTED_VIDEO_EXTENSIONS,
+  type HrTrainingModule,
 } from "@/lib/types/hr-training";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +39,7 @@ type HrTrainingUploadProps = {
 type UploadKind = "document" | "video";
 
 export function HrTrainingUpload({ hotel, variant = "admin" }: HrTrainingUploadProps) {
-  const [modules, setModules] = useState(() => getHotelTrainingModules(hotel));
+  const [modules, setModules] = useState<HrTrainingModule[]>([]);
   const [departments, setDepartments] = useState(() => getHotelDepartments(hotel));
   const [title, setTitle] = useState("");
   const [department, setDepartment] = useState<EmployeeDepartment | "all">("all");
@@ -49,7 +51,7 @@ export function HrTrainingUpload({ hotel, variant = "admin" }: HrTrainingUploadP
   const [success, setSuccess] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
-    setModules(getHotelTrainingModules(hotel));
+    void fetchHotelTrainingModules(hotel).then(setModules);
   }, [hotel]);
 
   useEffect(() => {
@@ -59,8 +61,8 @@ export function HrTrainingUpload({ hotel, variant = "admin" }: HrTrainingUploadP
   }, [refresh]);
 
   useEffect(() => {
-    setDepartments(getHotelDepartments(hotel));
-    const onDepts = () => setDepartments(getHotelDepartments(hotel));
+    void fetchHotelDepartments(hotel).then(setDepartments);
+    const onDepts = () => void fetchHotelDepartments(hotel).then(setDepartments);
     window.addEventListener("hotel-departments-updated", onDepts);
     return () => window.removeEventListener("hotel-departments-updated", onDepts);
   }, [hotel]);
@@ -78,7 +80,7 @@ export function HrTrainingUpload({ hotel, variant = "admin" }: HrTrainingUploadP
         phase,
         ask,
       });
-      addHotelTrainingModule(module);
+      await cloudAddHotelTrainingModule(module);
       setTitle("");
       setSuccess(
         `已生成课程「${module.title}」：${module.slideCount} 节讲解、${module.questionCount} 道测验。可在下方预览并分配给员工。`
@@ -105,7 +107,7 @@ export function HrTrainingUpload({ hotel, variant = "admin" }: HrTrainingUploadP
         ask,
         source: "hr",
       });
-      addHotelTrainingModule(module);
+      await cloudAddHotelTrainingModule(module);
       setTitle("");
       setSuccess(`视频课程「${module.title}」已上传，可在下方预览并分配给员工。`);
       refresh();

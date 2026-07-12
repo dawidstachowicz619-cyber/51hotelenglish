@@ -5,10 +5,13 @@ import { Building2, Plus, RotateCcw, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  cloudResetHotelDepartments,
+  cloudSaveHotelDepartments,
+  fetchHotelDepartments,
+} from "@/lib/hr/hotel-department-api";
+import {
   createDepartmentId,
   getHotelDepartments,
-  resetHotelDepartmentsToDefault,
-  saveHotelDepartments,
 } from "@/lib/hr/hotel-department-storage";
 import {
   COURSE_TRACK_LABELS,
@@ -29,7 +32,7 @@ export function HrDepartmentSettings({ hotel }: HrDepartmentSettingsProps) {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
-    setDepartments(getHotelDepartments(hotel));
+    void fetchHotelDepartments(hotel).then(setDepartments);
   }, [hotel]);
 
   useEffect(() => {
@@ -39,8 +42,7 @@ export function HrDepartmentSettings({ hotel }: HrDepartmentSettingsProps) {
   }, [refresh]);
 
   const persist = (next: HotelDepartment[]) => {
-    saveHotelDepartments(hotel, next);
-    setDepartments(next);
+    void cloudSaveHotelDepartments(hotel, next).then(setDepartments);
   };
 
   const handleAdd = () => {
@@ -87,8 +89,7 @@ export function HrDepartmentSettings({ hotel }: HrDepartmentSettingsProps) {
 
   const handleReset = () => {
     if (!window.confirm("恢复为系统默认的四个前厅部门？")) return;
-    resetHotelDepartmentsToDefault(hotel);
-    refresh();
+    void cloudResetHotelDepartments(hotel).then(refresh);
   };
 
   return (

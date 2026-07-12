@@ -7,6 +7,8 @@ import type { AskDimension } from "@/lib/types/learning-record";
 
 type HistoryStore = Record<string, LearningHistoryEntry[]>;
 
+const PENDING_HISTORY_KEY = "51he-learning-history-pending";
+
 function loadStore(): HistoryStore {
   if (typeof window === "undefined") return {};
   try {
@@ -23,6 +25,35 @@ function saveStore(store: HistoryStore): void {
   localStorage.setItem(LEARNING_HISTORY_KEY, JSON.stringify(store));
 }
 
+function loadPending(): Omit<LearningHistoryEntry, "id">[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(PENDING_HISTORY_KEY);
+    return raw ? (JSON.parse(raw) as Omit<LearningHistoryEntry, "id">[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePending(entries: Omit<LearningHistoryEntry, "id">[]): void {
+  if (typeof window === "undefined") return;
+  if (entries.length === 0) {
+    localStorage.removeItem(PENDING_HISTORY_KEY);
+    return;
+  }
+  localStorage.setItem(PENDING_HISTORY_KEY, JSON.stringify(entries));
+}
+
+export function drainPendingLearningHistory(): Omit<LearningHistoryEntry, "id">[] {
+  const pending = loadPending();
+  savePending([]);
+  return pending;
+}
+
+export function peekPendingLearningHistory(): Omit<LearningHistoryEntry, "id">[] {
+  return loadPending();
+}
+
 export function appendLearningHistory(entry: Omit<LearningHistoryEntry, "id">): void {
   const store = loadStore();
   const list = store[entry.employeeId] ?? [];
@@ -30,10 +61,25 @@ export function appendLearningHistory(entry: Omit<LearningHistoryEntry, "id">): 
   if (list.some((e) => e.id === id)) return;
   store[entry.employeeId] = [{ ...entry, id }, ...list].slice(0, 500);
   saveStore(store);
+
+  const pending = loadPending();
+  pending.push(entry);
+  savePending(pending.slice(-100));
+
+  window.dispatchEvent(new Event("learning-history-updated"));
 }
 
 export function getLearningHistory(employeeId: string): LearningHistoryEntry[] {
   return loadStore()[employeeId] ?? [];
+}
+
+export function replaceLearningHistory(
+  employeeId: string,
+  entries: LearningHistoryEntry[]
+): void {
+  const store = loadStore();
+  store[employeeId] = entries;
+  saveStore(store);
 }
 
 export function logNodeCompletion(
