@@ -97,7 +97,7 @@ function getTtsHtmlAudioElement(): HTMLAudioElement | null {
   return ttsHtmlAudioEl;
 }
 
-/** 在用户点击的同一时刻同步解锁音频（仅 Web Audio，避免与 TTS 播放抢同一个 audio 标签） */
+/** 在用户点击的同一时刻同步解锁音频（零音量静音，避免爆音杂音） */
 export function unlockGameAudioSync(): void {
   speechPrimed = true;
 
@@ -109,14 +109,28 @@ export function unlockGameAudioSync(): void {
   }
 
   try {
-    const buffer = ctx.createBuffer(1, 1, 22050);
+    const frames = Math.max(1, Math.floor(ctx.sampleRate * 0.05));
+    const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
     const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
     source.buffer = buffer;
-    source.connect(ctx.destination);
+    source.connect(gain);
+    gain.connect(ctx.destination);
     source.start(0);
   } catch {
     /* ignore */
   }
+}
+
+function duckBgmVolume(): () => void {
+  const master = bgmNodes?.master;
+  if (!master) return () => undefined;
+  const previous = master.gain.value;
+  master.gain.value = Math.min(previous, 0.02);
+  return () => {
+    master.gain.value = previous;
+  };
 }
 
 async function ensureAudioContext(): Promise<AudioContext | null> {
@@ -277,8 +291,18 @@ async function playMp3ViaWebAudio(blob: Blob): Promise<void> {
 
   return new Promise((resolve, reject) => {
     const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    const startAt = ctx.currentTime + 0.01;
+    const duration = audioBuffer.duration;
+
     source.buffer = audioBuffer;
-    source.connect(ctx.destination);
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(0, startAt);
+    gain.gain.linearRampToValueAtTime(1, startAt + 0.03);
+    gain.gain.setValueAtTime(1, startAt + Math.max(0.03, duration - 0.04));
+    gain.gain.linearRampToValueAtTime(0, startAt + duration);
+
     activeBufferSource = source;
 
     source.onended = () => {
@@ -287,7 +311,8 @@ async function playMp3ViaWebAudio(blob: Blob): Promise<void> {
     };
 
     try {
-      source.start(0);
+      source.start(startAt);
+      source.stop(startAt + duration + 0.05);
     } catch (err) {
       if (activeBufferSource === source) activeBufferSource = null;
       reject(err);
@@ -340,19 +365,30 @@ async function playMp3ViaHtmlAudio(blob: Blob): Promise<void> {
 }
 
 async function playMp3Blob(blob: Blob): Promise<void> {
-  if (!speechPrimed) {
-    unlockGameAudioSync();
-  }
   await ensureAudioContext();
+  const restoreBgm = duckBgmVolume();
 
   try {
-    await playMp3ViaWebAudio(blob);
-    return;
-  } catch {
-    /* Web Audio 在部分微信内核上失败，回退 HTML5 Audio */
-  }
+    if (isUnreliableWebSpeech()) {
+      try {
+        await playMp3ViaHtmlAudio(blob);
+        return;
+      } catch {
+        /* 微信部分机型 HTML Audio 失败，再试 Web Audio */
+      }
+    }
 
-  await playMp3ViaHtmlAudio(blob);
+    try {
+      await playMp3ViaWebAudio(blob);
+      return;
+    } catch {
+      /* Web Audio 解码失败时回退 HTML5 Audio */
+    }
+
+    await playMp3ViaHtmlAudio(blob);
+  } finally {
+    restoreBgm();
+  }
 }
 
 async function speakViaCloudTts(
@@ -371,7 +407,7 @@ async function speakViaCloudTts(
       await playMp3Blob(blob);
 
       if (i + 1 < repeat) {
-        await new Promise((r) => setTimeout(r, 320));
+        await new Promise((r) => setTimeout(r, 480));
       }
     }
     return true;
@@ -433,7 +469,7 @@ async function speakViaWebSpeech(
     if (session !== speakSession) break;
     await speakOnce();
     if (i + 1 < repeat) {
-      await new Promise((r) => setTimeout(r, 320));
+      await new Promise((r) => setTimeout(r, 480));
     }
   }
 

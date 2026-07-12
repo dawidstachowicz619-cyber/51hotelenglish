@@ -14,28 +14,24 @@ function normalizeBaseUrl(url: string): string {
 
 function parseSampleRate(value: string | undefined): number {
   const parsed = Number(value);
-  return parsed === 32000 || parsed === 44100 ? parsed : 44100;
+  return parsed === 32000 || parsed === 44100 ? parsed : 32000;
 }
 
-/** CosyVoice2 支持用提示词控制语气，更接近真人朗读 */
+/** 游戏单词用纯文本，避免 CosyVoice 提示词产生杂音 */
 export function formatTtsInput(text: string, mode: TtsSpeechMode = "default"): string {
   const word = text.trim();
   if (!word) return word;
 
-  if (mode === "success") {
-    return `Say this English word with a bright, cheerful tone.<|endofprompt|>${word}`;
-  }
-
-  if (mode === "fall") {
-    return `Read this English word clearly and naturally in American English.<|endofprompt|>${word}`;
+  if (mode === "fall" || mode === "success") {
+    return word;
   }
 
   return `Read this clearly and naturally in American English.<|endofprompt|>${word}`;
 }
 
 export function ttsSpeedForMode(mode: TtsSpeechMode): number {
-  if (mode === "success") return 0.96;
-  if (mode === "fall") return 0.88;
+  if (mode === "success") return 0.94;
+  if (mode === "fall") return 0.9;
   return 0.92;
 }
 
@@ -45,7 +41,7 @@ export function getTtsConfig(): TtsConfig | null {
 
   const model =
     process.env.SILICONFLOW_TTS_MODEL ?? "FunAudioLLM/CosyVoice2-0.5B";
-  const voicePreset = process.env.SILICONFLOW_TTS_VOICE ?? "claire";
+  const voicePreset = process.env.SILICONFLOW_TTS_VOICE ?? "anna";
 
   return {
     apiKey,

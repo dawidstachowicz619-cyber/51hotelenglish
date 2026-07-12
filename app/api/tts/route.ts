@@ -42,7 +42,6 @@ export async function POST(request: Request) {
         response_format: "mp3",
         speed,
         sample_rate: config.sampleRate,
-        gain: 0.5,
       }),
     });
 
