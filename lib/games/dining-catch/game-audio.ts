@@ -97,7 +97,7 @@ function getTtsHtmlAudioElement(): HTMLAudioElement | null {
   return ttsHtmlAudioEl;
 }
 
-/** 在用户点击的同一时刻同步解锁音频（零音量静音，避免爆音杂音） */
+/** 在用户点击的同一时刻同步解锁音频（仅 resume，避免静音缓冲带来嘶嘶声） */
 export function unlockGameAudioSync(): void {
   speechPrimed = true;
 
@@ -107,27 +107,13 @@ export function unlockGameAudioSync(): void {
   if (ctx.state === "suspended") {
     void ctx.resume();
   }
-
-  try {
-    const frames = Math.max(1, Math.floor(ctx.sampleRate * 0.05));
-    const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
-    const source = ctx.createBufferSource();
-    const gain = ctx.createGain();
-    gain.gain.value = 0.0001;
-    source.buffer = buffer;
-    source.connect(gain);
-    gain.connect(ctx.destination);
-    source.start(0);
-  } catch {
-    /* ignore */
-  }
 }
 
-function duckBgmVolume(): () => void {
+function muteBgmDuringSpeech(): () => void {
   const master = bgmNodes?.master;
   if (!master) return () => undefined;
   const previous = master.gain.value;
-  master.gain.value = Math.min(previous, 0.02);
+  master.gain.value = 0;
   return () => {
     master.gain.value = previous;
   };
@@ -280,7 +266,7 @@ export async function primeGameSpeech(): Promise<void> {
   window.speechSynthesis.speak(unlock);
 }
 
-async function playMp3ViaWebAudio(blob: Blob): Promise<void> {
+async function playSpeechViaWebAudio(blob: Blob): Promise<void> {
   const ctx = await ensureAudioContext();
   if (!ctx) throw new Error("no audio context");
 
@@ -292,15 +278,21 @@ async function playMp3ViaWebAudio(blob: Blob): Promise<void> {
   return new Promise((resolve, reject) => {
     const source = ctx.createBufferSource();
     const gain = ctx.createGain();
-    const startAt = ctx.currentTime + 0.01;
+    const filter = ctx.createBiquadFilter();
+    const startAt = ctx.currentTime + 0.02;
     const duration = audioBuffer.duration;
+
+    filter.type = "lowpass";
+    filter.frequency.value = 9000;
+    filter.Q.value = 0.6;
 
     source.buffer = audioBuffer;
     source.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(filter);
+    filter.connect(ctx.destination);
     gain.gain.setValueAtTime(0, startAt);
-    gain.gain.linearRampToValueAtTime(1, startAt + 0.03);
-    gain.gain.setValueAtTime(1, startAt + Math.max(0.03, duration - 0.04));
+    gain.gain.linearRampToValueAtTime(1, startAt + 0.04);
+    gain.gain.setValueAtTime(1, startAt + Math.max(0.04, duration - 0.05));
     gain.gain.linearRampToValueAtTime(0, startAt + duration);
 
     activeBufferSource = source;
@@ -320,7 +312,7 @@ async function playMp3ViaWebAudio(blob: Blob): Promise<void> {
   });
 }
 
-async function playMp3ViaHtmlAudio(blob: Blob): Promise<void> {
+async function playSpeechViaHtmlAudio(blob: Blob): Promise<void> {
   const htmlAudio = getTtsHtmlAudioElement();
   if (!htmlAudio) throw new Error("no html audio");
 
@@ -330,6 +322,7 @@ async function playMp3ViaHtmlAudio(blob: Blob): Promise<void> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(blob);
     htmlAudio.src = url;
+    htmlAudio.volume = 1;
 
     const cleanup = () => {
       htmlAudio.onended = null;
@@ -364,28 +357,31 @@ async function playMp3ViaHtmlAudio(blob: Blob): Promise<void> {
   });
 }
 
-async function playMp3Blob(blob: Blob): Promise<void> {
-  await ensureAudioContext();
-  const restoreBgm = duckBgmVolume();
+async function playSpeechBlob(blob: Blob): Promise<void> {
+  const restoreBgm = muteBgmDuringSpeech();
 
   try {
     if (isUnreliableWebSpeech()) {
       try {
-        await playMp3ViaHtmlAudio(blob);
+        await playSpeechViaHtmlAudio(blob);
         return;
       } catch {
-        /* 微信部分机型 HTML Audio 失败，再试 Web Audio */
+        await ensureAudioContext();
+        await playSpeechViaWebAudio(blob);
+        return;
       }
     }
 
+    await ensureAudioContext();
+
     try {
-      await playMp3ViaWebAudio(blob);
+      await playSpeechViaWebAudio(blob);
       return;
     } catch {
-      /* Web Audio 解码失败时回退 HTML5 Audio */
+      /* 桌面端 Web Audio 失败时回退 HTML5 Audio */
     }
 
-    await playMp3ViaHtmlAudio(blob);
+    await playSpeechViaHtmlAudio(blob);
   } finally {
     restoreBgm();
   }
@@ -404,7 +400,7 @@ async function speakViaCloudTts(
       const blob = await fetchCloudTtsBlob(text, mode);
       if (!blob) return false;
 
-      await playMp3Blob(blob);
+      await playSpeechBlob(blob);
 
       if (i + 1 < repeat) {
         await new Promise((r) => setTimeout(r, 480));

@@ -4,6 +4,7 @@ export type TtsConfig = {
   model: string;
   voice: string;
   sampleRate: number;
+  format: "wav" | "mp3";
 };
 
 export type TtsSpeechMode = "fall" | "success" | "default";
@@ -12,9 +13,14 @@ function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
-function parseSampleRate(value: string | undefined): number {
+function parseSampleRate(value: string | undefined, format: "wav" | "mp3"): number {
   const parsed = Number(value);
-  return parsed === 32000 || parsed === 44100 ? parsed : 32000;
+  if (parsed === 32000 || parsed === 44100) return parsed;
+  return format === "wav" ? 44100 : 32000;
+}
+
+function parseFormat(value: string | undefined): "wav" | "mp3" {
+  return value === "mp3" ? "mp3" : "wav";
 }
 
 /** 游戏单词用纯文本，避免 CosyVoice 提示词产生杂音 */
@@ -40,8 +46,9 @@ export function getTtsConfig(): TtsConfig | null {
   if (!apiKey) return null;
 
   const model =
-    process.env.SILICONFLOW_TTS_MODEL ?? "FunAudioLLM/CosyVoice2-0.5B";
+    process.env.SILICONFLOW_TTS_MODEL ?? "fishaudio/fish-speech-1.5";
   const voicePreset = process.env.SILICONFLOW_TTS_VOICE ?? "anna";
+  const format = parseFormat(process.env.SILICONFLOW_TTS_FORMAT);
 
   return {
     apiKey,
@@ -52,6 +59,7 @@ export function getTtsConfig(): TtsConfig | null {
     voice: voicePreset.includes(":")
       ? voicePreset
       : `${model}:${voicePreset}`,
-    sampleRate: parseSampleRate(process.env.SILICONFLOW_TTS_SAMPLE_RATE),
+    sampleRate: parseSampleRate(process.env.SILICONFLOW_TTS_SAMPLE_RATE, format),
+    format,
   };
 }

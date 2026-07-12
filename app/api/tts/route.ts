@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         model: config.model,
         input,
         voice: config.voice,
-        response_format: "mp3",
+        response_format: config.format,
         speed,
         sample_rate: config.sampleRate,
       }),
@@ -52,9 +52,10 @@ export async function POST(request: Request) {
     }
 
     const audio = await res.arrayBuffer();
+    const contentType = config.format === "wav" ? "audio/wav" : "audio/mpeg";
     return new NextResponse(audio, {
       headers: {
-        "Content-Type": "audio/mpeg",
+        "Content-Type": contentType,
         "Cache-Control": "public, max-age=86400",
       },
     });
