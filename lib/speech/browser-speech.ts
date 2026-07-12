@@ -4,10 +4,16 @@ export function isWeChatBrowser(): boolean {
   return /MicroMessenger/i.test(navigator.userAgent);
 }
 
+export function isAndroidDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android/i.test(navigator.userAgent);
+}
+
 export function isUnreliableWebSpeech(): boolean {
   if (typeof navigator === "undefined") return true;
   const ua = navigator.userAgent;
   if (/MicroMessenger/i.test(ua)) return true;
+  if (/HuaweiBrowser|HUAWEI|HONOR|OpenHarmony/i.test(ua)) return true;
   if (/iPhone|iPad|iPod/i.test(ua)) return true;
   if (/Android/i.test(ua) && !/Chrome\//i.test(ua)) return true;
   return false;

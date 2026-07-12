@@ -10,7 +10,7 @@ import {
   loadDiningCatchProgress,
   type DiningCatchProgress,
 } from "@/lib/games/dining-catch/progress-storage";
-import { primeGameSpeech } from "@/lib/games/dining-catch/game-audio";
+import { primeGameSpeech, unlockGameAudioSync } from "@/lib/games/dining-catch/game-audio";
 
 type View = "map" | "game";
 
@@ -32,6 +32,7 @@ export function DiningCatchHub() {
   }, [refreshProgress]);
 
   const handleSelectLevel = (level: number) => {
+    unlockGameAudioSync();
     void primeGameSpeech();
     setActiveLevel(level);
     setView("game");

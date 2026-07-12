@@ -7,18 +7,123 @@ let bgmNodes: {
   interval: ReturnType<typeof setInterval> | null;
 } | null = null;
 
+let sharedAudioContext: AudioContext | null = null;
+let htmlAudioEl: HTMLAudioElement | null = null;
+
 let speakSession = 0;
 let speechPrimed = false;
 let iosKeepAliveTimer: ReturnType<typeof setInterval> | null = null;
-let currentAudio: HTMLAudioElement | null = null;
+const ttsPrefetchCache = new Map<string, Promise<Blob | null>>();
+
+function ttsCacheKey(text: string, mode: "fall" | "success"): string {
+  return `${mode}:${text.trim().toLowerCase()}`;
+}
+
+function prefetchCloudTts(text: string, mode: "fall" | "success"): void {
+  const key = ttsCacheKey(text, mode);
+  if (ttsPrefetchCache.has(key)) return;
+
+  ttsPrefetchCache.set(
+    key,
+    fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, mode }),
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        return blob.size > 0 ? blob : null;
+      })
+      .catch(() => null)
+  );
+}
+
+async function fetchCloudTtsBlob(
+  text: string,
+  mode: "fall" | "success"
+): Promise<Blob | null> {
+  const key = ttsCacheKey(text, mode);
+  const cached = ttsPrefetchCache.get(key);
+  if (cached) {
+    const blob = await cached;
+    ttsPrefetchCache.delete(key);
+    if (blob) return blob;
+  }
+
+  const res = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, mode }),
+  });
+  if (!res.ok) return null;
+  const blob = await res.blob();
+  return blob.size > 0 ? blob : null;
+}
+
+function getSharedAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  if (!sharedAudioContext) {
+    const Ctx =
+      window.AudioContext ??
+      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return null;
+    sharedAudioContext = new Ctx();
+  }
+  return sharedAudioContext;
+}
+
+function getHtmlAudioElement(): HTMLAudioElement | null {
+  if (typeof document === "undefined") return null;
+  if (!htmlAudioEl) {
+    const audio = document.createElement("audio");
+    audio.setAttribute("playsinline", "true");
+    audio.setAttribute("webkit-playsinline", "true");
+    audio.setAttribute("x5-playsinline", "true");
+    audio.preload = "auto";
+    audio.style.display = "none";
+    document.body.appendChild(audio);
+    htmlAudioEl = audio;
+  }
+  return htmlAudioEl;
+}
+
+/** 在用户点击的同一时刻同步解锁音频（微信 / 华为必需，不能放在 await/.then 之后） */
+export function unlockGameAudioSync(): void {
+  speechPrimed = true;
+
+  const ctx = getSharedAudioContext();
+  if (ctx) {
+    if (ctx.state === "suspended") {
+      void ctx.resume();
+    }
+    try {
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const htmlAudio = getHtmlAudioElement();
+  if (htmlAudio) {
+    htmlAudio.muted = true;
+    htmlAudio.src =
+      "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    void htmlAudio.play().finally(() => {
+      htmlAudio.pause();
+      htmlAudio.muted = false;
+      htmlAudio.removeAttribute("src");
+    });
+  }
+}
 
 async function ensureAudioContext(): Promise<AudioContext | null> {
-  if (typeof window === "undefined") return null;
-  const Ctx =
-    window.AudioContext ??
-    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctx) return null;
-  const ctx = new Ctx();
+  const ctx = getSharedAudioContext();
+  if (!ctx) return null;
   if (ctx.state === "suspended") await ctx.resume();
   return ctx;
 }
@@ -42,11 +147,11 @@ function stopIosSpeechKeepAlive(): void {
   }
 }
 
-function stopCurrentAudio(): void {
-  if (!currentAudio) return;
-  currentAudio.pause();
-  currentAudio.src = "";
-  currentAudio = null;
+function stopHtmlAudio(): void {
+  const htmlAudio = htmlAudioEl;
+  if (!htmlAudio) return;
+  htmlAudio.pause();
+  htmlAudio.removeAttribute("src");
 }
 
 function playTone(
@@ -113,7 +218,6 @@ export function stopDiningCatchBgm(): void {
   if (bgmNodes.interval) clearInterval(bgmNodes.interval);
   try {
     bgmNodes.master.disconnect();
-    void bgmNodes.ctx.close();
   } catch {
     /* ignore */
   }
@@ -128,8 +232,8 @@ export function setDiningCatchBgmVolume(volume: number): void {
 
 /** 用户点击时解锁音频（微信 / 华为内置浏览器必需） */
 export async function primeGameSpeech(): Promise<void> {
+  unlockGameAudioSync();
   await ensureAudioContext();
-  speechPrimed = true;
 
   if (isUnreliableWebSpeech() || !window.speechSynthesis) return;
 
@@ -143,28 +247,72 @@ export async function primeGameSpeech(): Promise<void> {
   window.speechSynthesis.speak(unlock);
 }
 
-async function playMp3Blob(blob: Blob): Promise<void> {
-  await ensureAudioContext();
-  stopCurrentAudio();
+async function playMp3ViaWebAudio(blob: Blob): Promise<void> {
+  const ctx = await ensureAudioContext();
+  if (!ctx) throw new Error("no audio context");
+
+  const arrayBuffer = await blob.arrayBuffer();
+  const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+
+  return new Promise((resolve, reject) => {
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(ctx.destination);
+    source.onended = () => resolve();
+    try {
+      source.start(0);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+async function playMp3ViaHtmlAudio(blob: Blob): Promise<void> {
+  const htmlAudio = getHtmlAudioElement();
+  if (!htmlAudio) throw new Error("no html audio");
+
+  stopHtmlAudio();
 
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    currentAudio = audio;
+    htmlAudio.src = url;
 
-    audio.onended = () => {
+    const cleanup = () => {
       URL.revokeObjectURL(url);
-      if (currentAudio === audio) currentAudio = null;
+      htmlAudio.onended = null;
+      htmlAudio.onerror = null;
+    };
+
+    htmlAudio.onended = () => {
+      cleanup();
       resolve();
     };
-    audio.onerror = () => {
-      URL.revokeObjectURL(url);
-      if (currentAudio === audio) currentAudio = null;
-      reject(new Error("audio play failed"));
+    htmlAudio.onerror = () => {
+      cleanup();
+      reject(new Error("html audio play failed"));
     };
 
-    void audio.play().catch(reject);
+    void htmlAudio.play().catch((err) => {
+      cleanup();
+      reject(err);
+    });
   });
+}
+
+async function playMp3Blob(blob: Blob): Promise<void> {
+  if (!speechPrimed) {
+    unlockGameAudioSync();
+  }
+  await ensureAudioContext();
+
+  try {
+    await playMp3ViaWebAudio(blob);
+    return;
+  } catch {
+    /* Web Audio 在部分微信内核上失败，回退 HTML5 Audio */
+  }
+
+  await playMp3ViaHtmlAudio(blob);
 }
 
 async function speakViaCloudTts(
@@ -173,25 +321,23 @@ async function speakViaCloudTts(
   repeat: number,
   session: number
 ): Promise<boolean> {
-  for (let i = 0; i < repeat; i++) {
-    if (session !== speakSession) return true;
+  try {
+    for (let i = 0; i < repeat; i++) {
+      if (session !== speakSession) return true;
 
-    const res = await fetch("/api/tts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, mode }),
-    });
+      const blob = await fetchCloudTtsBlob(text, mode);
+      if (!blob) return false;
 
-    if (!res.ok) return false;
+      await playMp3Blob(blob);
 
-    const blob = await res.blob();
-    await playMp3Blob(blob);
-
-    if (i + 1 < repeat) {
-      await new Promise((r) => setTimeout(r, 320));
+      if (i + 1 < repeat) {
+        await new Promise((r) => setTimeout(r, 320));
+      }
     }
+    return true;
+  } catch {
+    return false;
   }
-  return true;
 }
 
 function pickAlternateEnglishVoice(exclude?: SpeechSynthesisVoice | null) {
@@ -258,28 +404,33 @@ async function speakViaWebSpeech(
 export async function speakGameWord(
   text: string,
   mode: "fall" | "success"
-): Promise<void> {
-  if (typeof window === "undefined" || !text.trim()) return;
+): Promise<boolean> {
+  if (typeof window === "undefined" || !text.trim()) return false;
 
   const repeat = mode === "fall" ? 3 : 1;
   const session = ++speakSession;
-  stopCurrentAudio();
+  stopHtmlAudio();
   if (window.speechSynthesis) window.speechSynthesis.cancel();
 
   await ensureAudioContext();
 
   const cloudOk = await speakViaCloudTts(text, mode, repeat, session);
-  if (cloudOk && session === speakSession) return;
+  if (cloudOk && session === speakSession) return true;
 
-  if (!isUnreliableWebSpeech()) {
+  if (session !== speakSession) return true;
+
+  try {
     await speakViaWebSpeech(text, mode, repeat, session);
+    return true;
+  } catch {
+    return false;
   }
 }
 
 export function stopGameSpeech(): void {
   speakSession += 1;
   stopIosSpeechKeepAlive();
-  stopCurrentAudio();
+  stopHtmlAudio();
   if (typeof window !== "undefined" && window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
@@ -287,4 +438,13 @@ export function stopGameSpeech(): void {
 
 export function prefersCloudGameSpeech(): boolean {
   return isUnreliableWebSpeech();
+}
+
+export function prefetchGameWordAudio(text: string, mode: "fall" | "success" = "fall"): void {
+  if (!text.trim()) return;
+  prefetchCloudTts(text, mode);
+}
+
+export function isGameSpeechPrimed(): boolean {
+  return speechPrimed;
 }

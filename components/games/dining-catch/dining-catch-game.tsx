@@ -7,6 +7,7 @@ import { Check, Heart, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playLessonCompleteSound, playSuccessSound } from "@/lib/audio/exercise-sounds";
 import {
+  prefetchGameWordAudio,
   primeGameSpeech,
   prefersCloudGameSpeech,
   setDiningCatchBgmVolume,
@@ -14,6 +15,7 @@ import {
   startDiningCatchBgm,
   stopDiningCatchBgm,
   stopGameSpeech,
+  unlockGameAudioSync,
 } from "@/lib/games/dining-catch/game-audio";
 import { isWeChatBrowser } from "@/lib/speech/browser-speech";
 import {
@@ -131,6 +133,7 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
   const [feedback, setFeedback] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const [needsTapForAudio, setNeedsTapForAudio] = useState(false);
+  const [audioHint, setAudioHint] = useState<string | null>(null);
   const roundTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playAreaRef = useRef<HTMLDivElement>(null);
   const spokeThisRoundRef = useRef(false);
@@ -170,7 +173,14 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
       if (muted || !english) return;
       spokeThisRoundRef.current = true;
       setNeedsTapForAudio(false);
-      void speakGameWord(english, "fall");
+      setAudioHint(null);
+      void speakGameWord(english, "fall").then((ok) => {
+        if (!ok) {
+          spokeThisRoundRef.current = false;
+          setNeedsTapForAudio(true);
+          setAudioHint("发音加载失败，请再点一次喇叭");
+        }
+      });
     },
     [muted]
   );
@@ -178,6 +188,7 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
   const handlePick = useCallback(
     (itemId: string, spriteId: string) => {
       if (locked || phase !== "playing" || !targetId || !levelConfig) return;
+      unlockGameAudioSync();
       clearRoundTimer();
       setLocked(true);
 
@@ -237,6 +248,11 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
       setSprites(nextSprites);
       spokeThisRoundRef.current = false;
       setNeedsTapForAudio(true);
+      setAudioHint(null);
+
+      if (prefersCloudGameSpeech()) {
+        prefetchGameWordAudio(target.english, "fall");
+      }
 
       if (!muted && !prefersCloudGameSpeech()) {
         window.setTimeout(() => {
@@ -289,14 +305,14 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
     if (!el || phase !== "playing") return;
 
     const onFirstTouch = () => {
-      void primeGameSpeech().then(() => {
-        if (!spokeThisRoundRef.current && targetEnglish && !muted) {
-          playRoundAudio(targetEnglish);
-        }
-      });
+      unlockGameAudioSync();
+      void primeGameSpeech();
+      if (!spokeThisRoundRef.current && targetEnglish && !muted) {
+        playRoundAudio(targetEnglish);
+      }
     };
 
-    el.addEventListener("touchstart", onFirstTouch, { passive: true, once: true });
+    el.addEventListener("touchstart", onFirstTouch, { passive: true });
     return () => {
       el.removeEventListener("touchstart", onFirstTouch);
     };
@@ -421,10 +437,12 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
           <button
             type="button"
             disabled={locked || muted || !targetEnglish}
+            onPointerDown={() => {
+              unlockGameAudioSync();
+              void primeGameSpeech();
+            }}
             onClick={() => {
-              void primeGameSpeech().then(() => {
-                if (targetEnglish) playRoundAudio(targetEnglish);
-              });
+              if (targetEnglish) playRoundAudio(targetEnglish);
             }}
             className={cn(
               "flex size-12 shrink-0 items-center justify-center rounded-full border-2 shadow-sm active:scale-95",
@@ -443,8 +461,11 @@ export function DiningCatchGame({ level, onBack, onComplete }: DiningCatchGamePr
         </p>
         {isWeChatBrowser() && !muted && (
           <p className="mt-1 text-xs font-bold text-accent">
-            微信内无法自动朗读，请点右侧喇叭 🔊
+            微信内请点右侧喇叭 🔊 或轻触游戏区域听发音
           </p>
+        )}
+        {audioHint && !muted && (
+          <p className="mt-1 text-xs font-bold text-red">{audioHint}</p>
         )}
         {feedback && (
           <p
